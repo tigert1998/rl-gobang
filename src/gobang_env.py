@@ -149,19 +149,19 @@ if __name__ == "__main__":
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        '[%(asctime)s] [%(levelname)s] %(message)s')
     handler.setFormatter(formatter)
     root.addHandler(handler)
 
     human_player = HumanPlayer()
 
-    def policy(chessboard):
+    def random_policy(chessboard):
         while True:
             x = random.randint(0, CHESSBOARD_SIZE-1)
             y = random.randint(0, CHESSBOARD_SIZE-1)
             if stone_is_valid(chessboard, x, y):
                 return (x, y)
-    ai_player = AIPlayer(policy)
+    random_player = AIPlayer(random_policy)
 
-    arena = VisualArena([ai_player, ai_player])
+    arena = VisualArena([random_player, random_player])
     arena.event_loop()

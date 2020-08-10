@@ -1,4 +1,6 @@
 from constants import CHESSBOARD_SIZE
+from gobang_env import get_winner
+
 import numpy as np
 import itertools
 
@@ -17,18 +19,24 @@ class MCTSNode:
             1, 2, CHESSBOARD_SIZE, CHESSBOARD_SIZE
         )
 
-        self.childs = [
-            [None] * CHESSBOARD_SIZE
-            for _ in range(CHESSBOARD_SIZE)
-        ]
-        p, v = self.network(self.chessboard)
-        self.p = p[0, :, :]
-        self.v = v[0, 0]
+        winner = get_winner(self.chessboard)
+        self.terminated = winner is not None
+        if self.terminated:
+            self.v = 1 if winner == 0 else -1
+        else:
+            self.childs = [
+                [None] * CHESSBOARD_SIZE
+                for _ in range(CHESSBOARD_SIZE)
+            ]
+            p, v = self.network(self.chessboard)
+            self.p = p[0, :, :]
+            self.v = v[0, 0]
+
         self.n = 1
         self.sigma_v = self.v
         self.q = self.v
 
-    def _child_n(self, x, y):
+    def child_n(self, x, y):
         return 0 if (self.childs[x][y] is None) else self.childs[x][y].n
 
     def _construct_child_chessboard(self, x, y):
@@ -50,7 +58,7 @@ class MCTSNode:
         self.q = self.sigma_v / self.n
 
     def ucb(self, x, y, cpuct):
-        return cpuct * self.p[x][y] * (self.n ** 0.5) / (self._child_n(x, y) + 1)
+        return cpuct * self.p[x][y] * (self.n ** 0.5) / (self.child_n(x, y) + 1)
 
     def select(self, cpuct):
         choice = None
@@ -90,11 +98,24 @@ class MCTS:
 
     def simulate(self):
         node = self.root
-        
+
         path = [node]
-        
+        for _ in range(2):
+            if node.terminated:
+                break
+            x, y = node.select(1)
+            node = node.childs[x][y]
+            path.append(node)
 
         for node in reversed(path):
             node._update()
-        
-        
+
+    def get_pi(self, temperature):
+        pi = [0 for _ in range(CHESSBOARD_SIZE ** 2)]
+        deno = 0
+        for x in range(CHESSBOARD_SIZE):
+            for y in range(CHESSBOARD_SIZE):
+                idx = x * CHESSBOARD_SIZE + y
+                pi[idx] = self.root.child_n(x, y) ** (1 / temperature)
+                deno += pi[idx]
+        return np.array(pi) / deno
