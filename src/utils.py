@@ -4,11 +4,13 @@ import numpy as np
 
 from constants import CHESSBOARD_SIZE, IN_A_ROW
 
+_DIRS = [[0, 1], [-1, 1], [-1, 0], [-1, -1]]
+
 
 def stone_is_valid(chessboard, x, y) -> bool:
     if min(x, y) < 0 or max(x, y) >= CHESSBOARD_SIZE:
         return False
-    if chessboard[0, ::, x, y].sum() > 0:
+    if chessboard[0, :, x, y].sum() > 0:
         return False
     return True
 
@@ -27,10 +29,8 @@ def get_winner(chessboard):
     """
     assert chessboard.shape == (1, 2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)
 
-    dirs = [[0, 1], [-1, 1], [-1, 0], [-1, -1]]
-
     for a in [0, 1]:
-        for x, y, d in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE), dirs):
+        for x, y, d in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE), _DIRS):
             yes = True
             for i in range(IN_A_ROW):
                 nx, ny = np.array([x, y]) + np.array(d) * i
@@ -45,3 +45,27 @@ def get_winner(chessboard):
         return -2
 
     return -1
+
+
+def simple_heuristics(chessboard) -> float:
+    assert chessboard.shape == (1, 2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)
+
+    heuristics = [0.0, 0.0]
+    rank = [0, 0, 1, 1e2, 1e4, 1e6]
+
+    for who in [0, 1]:
+        for x, y, d in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE), _DIRS):
+            break_flag = False
+            for i in range(IN_A_ROW):
+                nx, ny = np.array([x, y]) + np.array(d) * i
+                if min(nx, ny) < 0 or max(nx, ny) >= CHESSBOARD_SIZE or not (chessboard[0, who, nx, ny] > 0):
+                    break_flag = True
+                    break
+            if not break_flag:
+                i += 1
+            heuristics[who] += rank[i]
+
+    deno = heuristics[0] + heuristics[1]
+    if not (deno > 0):
+        return 0
+    return 2 * heuristics[0] / deno - 1

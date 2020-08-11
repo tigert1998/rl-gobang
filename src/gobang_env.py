@@ -9,7 +9,8 @@ import numpy as np
 
 from constants import CHESSBOARD_SIZE
 from atomic_value import AtomicValue
-from players import Player, HUMAN_PLAYER, BASIC_MCTS_PLAYER
+from players import Player, \
+    HUMAN_PLAYER, BASIC_MCTS_PLAYER, GREEDY_PLAYER, GREEDY_MCTS_PLAYER
 from utils import stone_is_valid, get_winner
 
 
@@ -109,5 +110,5 @@ def config_log():
 if __name__ == "__main__":
     config_log()
 
-    arena = VisualArena([BASIC_MCTS_PLAYER, BASIC_MCTS_PLAYER])
+    arena = VisualArena([GREEDY_MCTS_PLAYER, BASIC_MCTS_PLAYER])
     arena.event_loop()

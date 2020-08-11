@@ -2,10 +2,12 @@ from typing import Tuple
 import threading
 from copy import copy
 import random
-import numpy as np
 import itertools
+import logging
 
-from utils import stone_is_valid
+import numpy as np
+
+from utils import stone_is_valid, simple_heuristics
 from constants import CHESSBOARD_SIZE
 from mcts import MCTS
 
@@ -88,7 +90,53 @@ def _basic_mcts_policy(chessboard):
     for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
         if pi[x, y] > 0:
             choices.append((x, y))
+    logging.info("mcts.q = {}".format(t.root.q()))
     return choices[random.randint(0, len(choices) - 1)]
 
 
 BASIC_MCTS_PLAYER = AIPlayer(_basic_mcts_policy)
+
+
+def _greedy_policy(chessboard):
+    if not (chessboard.sum() > 0):
+        return CHESSBOARD_SIZE // 2, CHESSBOARD_SIZE // 2
+
+    highest = -np.inf
+    choice = None
+    for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
+        if chessboard[0, :, x, y].sum() > 0:
+            continue
+        new_chessboard = chessboard.copy()
+        new_chessboard[0, 0, x, y] = 1
+        v = simple_heuristics(new_chessboard)
+        new_chessboard[0, 0, x, y] = 0
+        new_chessboard[0, 1, x, y] = 1
+        v -= simple_heuristics(new_chessboard)
+        if v > highest:
+            highest = v
+            choice = (x, y)
+    return choice
+
+
+GREEDY_PLAYER = AIPlayer(_greedy_policy)
+
+
+def _greedy_mcts_policy(chessboard):
+    def base_policy(chessboard):
+        policy = np.ones((1, CHESSBOARD_SIZE, CHESSBOARD_SIZE)) \
+            / CHESSBOARD_SIZE ** 2
+        value = simple_heuristics(chessboard)
+        value = np.array([[value]])
+        return policy, value
+    t = MCTS(0, chessboard, base_policy)
+    t.search(800)
+    pi = t.get_pi(0)
+    choices = []
+    for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
+        if pi[x, y] > 0:
+            choices.append((x, y))
+    logging.info("mcts.q = {}".format(t.root.q()))
+    return choices[random.randint(0, len(choices) - 1)]
+
+
+GREEDY_MCTS_PLAYER = AIPlayer(_greedy_mcts_policy)

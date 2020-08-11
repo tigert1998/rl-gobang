@@ -44,7 +44,7 @@ class MCTSNode:
         return ret
 
     def q(self):
-        return self.sigma_v / self.n
+        return self.sigma_v * 1.0 / self.n
 
     def backup(self, delta_v):
         self.n += 1
@@ -134,7 +134,7 @@ class MCTS:
                 elif child.n == highest:
                     pos.append((x, y))
             else:
-                pi[x, y] = child.n ** (1 / temperature)
+                pi[x, y] = child.n ** (1.0 / temperature)
                 deno += pi[x, y]
 
         if temperature == 0:
