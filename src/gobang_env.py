@@ -1,96 +1,15 @@
 import threading
-import itertools
-from typing import List, Tuple
-from copy import copy
+from typing import List
 import logging
-import random
+import sys
 
 import pygame
 import numpy as np
 
-from constants import CHESSBOARD_SIZE, IN_A_ROW
+from constants import CHESSBOARD_SIZE
 from atomic_value import AtomicValue
-
-
-def stone_is_valid(chessboard, x, y) -> bool:
-    if min(x, y) < 0 or max(x, y) >= CHESSBOARD_SIZE:
-        return False
-    if chessboard[0, ::, x, y].sum() > 0:
-        return False
-    return True
-
-
-def get_winner(chessboard):
-    """Get winner of the chessboard.
-
-    Args:
-        chessboard: A np.array of shape (1, 2, CHESSBOARD_SIZE, CHESSBOARD_SIZE).
-
-    Returns:
-        The winner of the state.
-        0 or 1 represent the winner.
-        -1 represents the game should continue.
-        Besides, -2 means the game has ended but there is no winner.
-    """
-    assert chessboard.shape == (1, 2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)
-
-    dirs = [[0, 1], [-1, 1], [-1, 0], [-1, -1]]
-
-    for a in [0, 1]:
-        for x, y, d in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE), dirs):
-            yes = True
-            for i in range(IN_A_ROW):
-                nx, ny = np.array([x, y]) + np.array(d) * i
-                if min(nx, ny) < 0 or max(nx, ny) >= CHESSBOARD_SIZE:
-                    yes = False
-                else:
-                    yes &= chessboard[0, a, nx, ny] > 0
-            if yes:
-                return a
-
-    if chessboard.sum() >= CHESSBOARD_SIZE ** 2:
-        return -2
-
-    return -1
-
-
-class Player:
-    def place_stone(self, x, y):
-        ...
-
-    def evaluate(self, chessboard) -> Tuple[int, int]:
-        ...
-
-
-class HumanPlayer(Player):
-    def __init__(self):
-        self.lock = threading.Lock()
-        self.cv = threading.Condition(self.lock)
-        self.choice = None
-
-    def place_stone(self, x, y):
-        self.cv.acquire()
-        self.choice = (x, y)
-        self.cv.notify_all()
-        self.cv.release()
-
-    def evaluate(self, chessboard):
-        self.cv.acquire()
-        self.choice = None
-        while self.choice is None or not stone_is_valid(chessboard, *self.choice):
-            self.cv.wait()
-        choice = copy(self.choice)
-        self.cv.release()
-
-        return choice
-
-
-class AIPlayer(Player):
-    def __init__(self, policy):
-        self.policy = policy
-
-    def evaluate(self, chessboard):
-        return self.policy(chessboard)
+from players import Player, HUMAN_PLAYER, BASIC_MCTS_PLAYER
+from utils import stone_is_valid, get_winner
 
 
 class VisualArena:
@@ -116,18 +35,18 @@ class VisualArena:
             while not killed.load():
                 x, y = self.players[who].evaluate(chessboard)
                 if not stone_is_valid(chessboard, x, y):
-                    logging.fatal(
-                        f"Invalid stone placed by {self.INFO[who][0]} player at ({x}, {y})"
-                    )
+                    msg = "Invalid stone placed by {} player at ({}, {})".format(
+                        self.INFO[who][0], x, y)
+                    logging.error(msg)
                     return
                 chessboard[0, who, x, y] = 1
                 self.place_stone(self.INFO[who][1], x, y)
-                winner= get_winner(chessboard)
+                winner = get_winner(chessboard)
                 if winner >= 0:
-                    logging.info(f"{self.INFO[who][0]} player wins!")
+                    logging.info("{} player wins!".format(self.INFO[who][0]))
                     return
                 elif winner == -2:
-                    logging.info(f"The game ends in a draw.")
+                    logging.info("The game ends in a draw.")
                     return
                 who = 1 - who
 
@@ -157,8 +76,7 @@ class VisualArena:
         pygame.display.update()
 
 
-if __name__ == "__main__":
-    import sys
+def config_log():
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
 
@@ -169,15 +87,9 @@ if __name__ == "__main__":
     handler.setFormatter(formatter)
     root.addHandler(handler)
 
-    human_player = HumanPlayer()
 
-    def random_policy(chessboard):
-        while True:
-            x = random.randint(0, CHESSBOARD_SIZE-1)
-            y = random.randint(0, CHESSBOARD_SIZE-1)
-            if stone_is_valid(chessboard, x, y):
-                return (x, y)
-    random_player = AIPlayer(random_policy)
+if __name__ == "__main__":
+    config_log()
 
-    arena = VisualArena([random_player, random_player])
+    arena = VisualArena([BASIC_MCTS_PLAYER, HUMAN_PLAYER])
     arena.event_loop()

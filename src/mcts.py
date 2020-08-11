@@ -1,4 +1,6 @@
 import itertools
+
+import torch
 import numpy as np
 
 from constants import CHESSBOARD_SIZE
@@ -61,6 +63,8 @@ class MCTSNode:
         highest = -np.inf
 
         for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
+            if self.chessboard[0, ::, x, y].sum() > 0:
+                continue
             child = self.childs[x][y]
             if child is None:
                 tmp = cpuct * self.p[x][y] * (self.n ** 0.5)

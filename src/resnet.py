@@ -8,10 +8,10 @@ class ResidualBlock(nn.Module):
     def __init__(self):
         super(ResidualBlock, self).__init__()
         self.module_list = nn.Sequential(
-            nn.Conv2d(256, 256, 3),
+            nn.Conv2d(256, 256, 3, padding=1),
             nn.BatchNorm2d(256),
             nn.ReLU(),
-            nn.Conv2d(256, 256, 3),
+            nn.Conv2d(256, 256, 3, padding=1),
             nn.BatchNorm2d(256),
         )
 
@@ -21,12 +21,12 @@ class ResidualBlock(nn.Module):
 
 
 class ResNet(nn.Module):
-    NUM_RESIDUAL_BLOCKS = 19
+    NUM_RESIDUAL_BLOCKS = 3
 
     def __init__(self):
         super(ResNet, self).__init__()
         self.module_list = nn.Sequential(
-            nn.Conv2d(2, 256, 3),
+            nn.Conv2d(2, 256, 3, padding=1),
             nn.BatchNorm2d(256),
             nn.ReLU(),
             *[ResidualBlock() for _ in range(self.NUM_RESIDUAL_BLOCKS)]
@@ -52,9 +52,6 @@ class ResNet(nn.Module):
 
     def forward(self, x):
         net = self.module_list(x)
-        ret0 = torch.reshape(
-            self.policy_head(net),
-            (-1, CHESSBOARD_SIZE, CHESSBOARD_SIZE)
-        )
+        ret0 = self.policy_head(net).view(-1, CHESSBOARD_SIZE, CHESSBOARD_SIZE)
         ret1 = self.value_head(net)
         return (ret0, ret1)
