@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from constants import CHESSBOARD_SIZE
@@ -35,7 +36,8 @@ class ResNet(nn.Module):
             nn.BatchNorm2d(2),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(CHESSBOARD_SIZE ** 2 * 2, CHESSBOARD_SIZE ** 2)
+            nn.Linear(CHESSBOARD_SIZE ** 2 * 2, CHESSBOARD_SIZE ** 2),
+            nn.Softmax()
         )
         self.value_head = nn.Sequential(
             nn.Conv2d(256, 1, 1),
@@ -50,4 +52,9 @@ class ResNet(nn.Module):
 
     def forward(self, x):
         net = self.module_list(x)
-        return self.policy_head(net), self.value_head(net)
+        ret0 = torch.reshape(
+            self.policy_head(net),
+            (-1, CHESSBOARD_SIZE, CHESSBOARD_SIZE)
+        )
+        ret1 = self.value_head(net)
+        return (ret0, ret1)

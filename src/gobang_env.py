@@ -1,6 +1,3 @@
-import pygame
-
-import numpy as np
 import threading
 import itertools
 from typing import List, Tuple
@@ -8,7 +5,10 @@ from copy import copy
 import logging
 import random
 
-from constants import CHESSBOARD_SIZE
+import pygame
+import numpy as np
+
+from constants import CHESSBOARD_SIZE, IN_A_ROW
 from atomic_value import AtomicValue
 
 
@@ -21,6 +21,17 @@ def stone_is_valid(chessboard, x, y) -> bool:
 
 
 def get_winner(chessboard):
+    """Get winner of the chessboard.
+
+    Args:
+        chessboard: A np.array of shape (1, 2, CHESSBOARD_SIZE, CHESSBOARD_SIZE).
+
+    Returns:
+        The winner of the state.
+        0 or 1 represent the winner.
+        -1 represents the game should continue.
+        Besides, -2 means the game has ended but there is no winner.
+    """
     assert chessboard.shape == (1, 2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)
 
     dirs = [[0, 1], [-1, 1], [-1, 0], [-1, -1]]
@@ -28,7 +39,7 @@ def get_winner(chessboard):
     for a in [0, 1]:
         for x, y, d in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE), dirs):
             yes = True
-            for i in range(5):
+            for i in range(IN_A_ROW):
                 nx, ny = np.array([x, y]) + np.array(d) * i
                 if min(nx, ny) < 0 or max(nx, ny) >= CHESSBOARD_SIZE:
                     yes = False
@@ -37,7 +48,10 @@ def get_winner(chessboard):
             if yes:
                 return a
 
-    return None
+    if chessboard.sum() >= CHESSBOARD_SIZE ** 2:
+        return -2
+
+    return -1
 
 
 class Player:
@@ -98,25 +112,28 @@ class VisualArena:
 
         def player_loop():
             chessboard = np.zeros((1, 2, CHESSBOARD_SIZE, CHESSBOARD_SIZE))
-            round = 0
+            who = 0
             while not killed.load():
-                x, y = self.players[round].evaluate(chessboard)
+                x, y = self.players[who].evaluate(chessboard)
                 if not stone_is_valid(chessboard, x, y):
                     logging.fatal(
-                        f"invalid stone placed by {self.INFO[round][0]} player at ({x}, {y})"
+                        f"Invalid stone placed by {self.INFO[who][0]} player at ({x}, {y})"
                     )
                     return
-                chessboard[0, round, x, y] = 1
-                self.place_stone(self.INFO[round][1], x, y)
-                if get_winner(chessboard) is not None:
-                    logging.info(f"{self.INFO[round][0]} player wins!")
+                chessboard[0, who, x, y] = 1
+                self.place_stone(self.INFO[who][1], x, y)
+                winner= get_winner(chessboard)
+                if winner >= 0:
+                    logging.info(f"{self.INFO[who][0]} player wins!")
                     return
-                round = 1 - round
+                elif winner == -2:
+                    logging.info(f"The game ends in a draw.")
+                    return
+                who = 1 - who
 
         thread = threading.Thread(target=player_loop)
         thread.start()
 
-        # pylint: disable=no-member
         while True:
             event = pygame.event.wait()
             if event.type == pygame.QUIT:
@@ -130,7 +147,6 @@ class VisualArena:
                     .astype(np.int32)
                 for i in range(2):
                     self.players[i].place_stone(x, y)
-        # pylint: enable=no-member
 
     def place_stone(self, color, x, y):
         pygame.draw.circle(

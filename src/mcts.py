@@ -1,8 +1,8 @@
+import itertools
+import numpy as np
+
 from constants import CHESSBOARD_SIZE
 from gobang_env import get_winner
-
-import numpy as np
-import itertools
 
 
 class MCTSNode:
@@ -20,9 +20,9 @@ class MCTSNode:
         )
 
         winner = get_winner(self.chessboard)
-        self.terminated = winner is not None
+        self.terminated = winner != -1
         if self.terminated:
-            self.v = 1 if winner == 0 else -1
+            self.v = 0 if winner == -2 else (1 if winner == 0 else -1)
         else:
             self.childs = [
                 [None] * CHESSBOARD_SIZE
@@ -32,12 +32,8 @@ class MCTSNode:
             self.p = p[0, :, :]
             self.v = v[0, 0]
 
-        self.n = 1
-        self.sigma_v = self.v
-        self.q = self.v
-
-    def child_n(self, x, y):
-        return 0 if (self.childs[x][y] is None) else self.childs[x][y].n
+        self.n = 0
+        self.sigma_v = 0
 
     def _construct_child_chessboard(self, x, y):
         ret = self.chessboard.copy()
@@ -45,77 +41,100 @@ class MCTSNode:
         ret[0, 0, x, y] = 1
         return ret
 
-    def _update(self):
-        self.n = 1
-        self.sigma_v = self.v
-        for x in range(CHESSBOARD_SIZE):
-            for y in range(CHESSBOARD_SIZE):
-                if self.childs[x][y] is None:
-                    continue
-                child = self.childs[x][y]
-                self.n += child.n
-                self.sigma_v += -child.sigma_v
-        self.q = self.sigma_v / self.n
+    def q(self):
+        return self.sigma_v / self.n
 
-    def ucb(self, x, y, cpuct):
-        return cpuct * self.p[x][y] * (self.n ** 0.5) / (self.child_n(x, y) + 1)
+    def backup(self, delta_v):
+        self.n += 1
+        self.sigma_v += delta_v
+
+    def expand(self, x, y):
+        assert self.childs[x][y] is None
+        self.childs[x][y] = MCTSNode(
+            1 - self.me,
+            self._construct_child_chessboard(x, y),
+            self.network
+        )
 
     def select(self, cpuct):
-        choice = None
-        highest_bound = 0
-
-        for x in range(CHESSBOARD_SIZE):
-            for y in range(CHESSBOARD_SIZE):
-                if self.chessboard[0, 0, x, y] > 0 or self.chessboard[0, 1, x, y] > 0:
-                    continue
-                if self.childs[x][y] is None:
-                    self.childs[x][y] = MCTSNode(
-                        1 - self.me,
-                        self._construct_child_chessboard(x, y),
-                        self.network
-                    )
-
-        self._update()
+        ret = None
+        highest = -np.inf
 
         for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
-            tmp = self.childs[x][y].q + self.ucb(x, y, cpuct)
-            if tmp > highest_bound:
-                highest_bound = tmp
-                choice = (x, y)
+            child = self.childs[x][y]
+            if child is None:
+                tmp = cpuct * self.p[x][y] * (self.n ** 0.5)
+            else:
+                tmp = -self.childs[x][y].q() +\
+                    cpuct * self.p[x][y] * (self.n ** 0.5) / (child.n + 1)
 
-        return choice
+            if tmp > highest:
+                highest = tmp
+                ret = (x, y)
+
+        return ret
 
 
 class MCTS:
     def __init__(self, me, chessboard, network):
         self.me = me
+        self.chessboard = chessboard
         self.network = network
-        self.root = MCTSNode(me, chessboard, network)
+        self.root = None
+
+    @classmethod
+    def from_mcts_node(cls, node: MCTSNode):
+        t = MCTS(node.me, node.chessboard, node.network)
+        t.root = node
+        return t
 
     def search(self, num_sims: int):
+        if self.root is None:
+            self.root = MCTSNode(self.me, self.chessboard, self.network)
         for _ in range(num_sims):
             self.simulate()
 
     def simulate(self):
         node = self.root
 
+        cpuct = 1
+
         path = [node]
-        for _ in range(2):
-            if node.terminated:
-                break
-            x, y = node.select(1)
+        while not node.terminated:
+            x, y = node.select(cpuct)
+            if node.childs[x][y] is None:
+                node.expand(x, y)
             node = node.childs[x][y]
             path.append(node)
 
+        delta_v = node.v
         for node in reversed(path):
-            node._update()
+            node.backup(delta_v)
+            delta_v *= -1
 
-    def get_pi(self, temperature):
-        pi = [0 for _ in range(CHESSBOARD_SIZE ** 2)]
+    def get_pi(self, temperature) -> np.array:
+        pi = np.zeros((CHESSBOARD_SIZE, CHESSBOARD_SIZE))
         deno = 0
-        for x in range(CHESSBOARD_SIZE):
-            for y in range(CHESSBOARD_SIZE):
-                idx = x * CHESSBOARD_SIZE + y
-                pi[idx] = self.root.child_n(x, y) ** (1 / temperature)
-                deno += pi[idx]
-        return np.array(pi) / deno
+        highest = 0
+        pos = None
+        for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
+            child = self.root.childs[x][y]
+            if child is None:
+                continue
+            if temperature == 0:
+                if child.n > highest:
+                    pos = [(x, y)]
+                    highest = child.n
+                elif child.n == highest:
+                    pos.append((x, y))
+            else:
+                pi[x, y] = child.n ** (1 / temperature)
+                deno += pi[x, y]
+
+        if temperature == 0:
+            for x, y in pos:
+                pi[x, y] = 1.0 / len(pos)
+        else:
+            pi = pi / deno
+
+        return pi
