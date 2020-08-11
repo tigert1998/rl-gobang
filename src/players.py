@@ -7,6 +7,7 @@ import itertools
 
 from utils import stone_is_valid
 from constants import CHESSBOARD_SIZE
+from mcts import MCTS
 
 
 class Player:
@@ -16,12 +17,16 @@ class Player:
     def evaluate(self, chessboard) -> Tuple[int, int]:
         ...
 
+    def kill(self):
+        ...
+
 
 class HumanPlayer(Player):
     def __init__(self):
         self.lock = threading.Lock()
         self.cv = threading.Condition(self.lock)
         self.choice = None
+        self.killed = False
 
     def place_stone(self, x, y):
         self.cv.acquire()
@@ -32,12 +37,18 @@ class HumanPlayer(Player):
     def evaluate(self, chessboard):
         self.cv.acquire()
         self.choice = None
-        while self.choice is None or not stone_is_valid(chessboard, *self.choice):
+        while not self.killed and (self.choice is None or not stone_is_valid(chessboard, *self.choice)):
             self.cv.wait()
         choice = copy(self.choice)
         self.cv.release()
 
         return choice
+
+    def kill(self):
+        self.cv.acquire()
+        self.killed = True
+        self.cv.notify_all()
+        self.cv.release()
 
 
 class AIPlayer(Player):
@@ -63,18 +74,19 @@ RANDOM_PLAYER = AIPlayer(_random_policy)
 
 
 def _basic_mcts_policy(chessboard):
-    from mcts import MCTS
-
     def base_policy(_):
-        return np.ones((1, CHESSBOARD_SIZE, CHESSBOARD_SIZE)) / CHESSBOARD_SIZE ** 2, np.array([[0]])
+        policy = np.ones((1, CHESSBOARD_SIZE, CHESSBOARD_SIZE)) \
+            / CHESSBOARD_SIZE ** 2
+        value = np.array([[0]])
+        return policy, value
     t = MCTS(0, chessboard, base_policy)
-    t.search(100)
+    t.search(1600)
     pi = t.get_pi(0)
     choices = []
     for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
         if pi[x, y] > 0:
             choices.append((x, y))
-    return choices[random.randint(0, len(choices)-1)]
+    return choices[random.randint(0, len(choices) - 1)]
 
 
 BASIC_MCTS_PLAYER = AIPlayer(_basic_mcts_policy)

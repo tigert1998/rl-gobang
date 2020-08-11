@@ -4,7 +4,7 @@ import torch
 import numpy as np
 
 from constants import CHESSBOARD_SIZE
-from gobang_env import get_winner
+from utils import get_winner
 
 
 class MCTSNode:
@@ -40,7 +40,7 @@ class MCTSNode:
     def _construct_child_chessboard(self, x, y):
         ret = self.chessboard.copy()
         ret = ret[:, ::-1, :, :]
-        ret[0, 0, x, y] = 1
+        ret[0, 1, x, y] = 1
         return ret
 
     def q(self):
@@ -103,11 +103,13 @@ class MCTS:
 
         cpuct = 1
 
+        expanded = False
         path = [node]
-        while not node.terminated:
+        while not node.terminated and not expanded:
             x, y = node.select(cpuct)
             if node.childs[x][y] is None:
                 node.expand(x, y)
+                expanded = True
             node = node.childs[x][y]
             path.append(node)
 
