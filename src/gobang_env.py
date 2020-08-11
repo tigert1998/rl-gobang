@@ -44,7 +44,7 @@ class VisualArena:
 
         def player_loop(chessboard, who):
             while not killed.load():
-                choice = self.players[who].evaluate(chessboard)
+                choice = self.players[who].evaluate(who, chessboard)
                 if killed.load():
                     break
                 x, y = choice
@@ -109,5 +109,5 @@ def config_log():
 if __name__ == "__main__":
     config_log()
 
-    arena = VisualArena([BASIC_MCTS_PLAYER, HUMAN_PLAYER])
+    arena = VisualArena([BASIC_MCTS_PLAYER, BASIC_MCTS_PLAYER])
     arena.event_loop()

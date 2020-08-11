@@ -14,7 +14,7 @@ class Player:
     def place_stone(self, x, y):
         ...
 
-    def evaluate(self, chessboard) -> Tuple[int, int]:
+    def evaluate(self, who, chessboard) -> Tuple[int, int]:
         ...
 
     def kill(self):
@@ -34,7 +34,7 @@ class HumanPlayer(Player):
         self.cv.notify_all()
         self.cv.release()
 
-    def evaluate(self, chessboard):
+    def evaluate(self, who, chessboard):
         self.cv.acquire()
         self.choice = None
         while not self.killed and (self.choice is None or not stone_is_valid(chessboard, *self.choice)):
@@ -55,7 +55,9 @@ class AIPlayer(Player):
     def __init__(self, policy):
         self.policy = policy
 
-    def evaluate(self, chessboard):
+    def evaluate(self, who, chessboard):
+        if who == 1:
+            chessboard = chessboard[:, ::-1, :, :]
         return self.policy(chessboard)
 
 
