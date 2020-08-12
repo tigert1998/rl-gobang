@@ -11,6 +11,8 @@ from mcts import MCTS
 from resnet import ResNet
 from constants import CHESSBOARD_SIZE
 
+GPU = torch.device("cuda:0")
+
 
 class GobangSelfPlayDataset(Dataset):
     def __init__(self, network):
@@ -37,7 +39,7 @@ class GobangSelfPlayDataset(Dataset):
     def _self_play(self):
         def base_policy(chessboard):
             i = torch.from_numpy(np.expand_dims(
-                chessboard.astype(np.float32), axis=0))
+                chessboard.astype(np.float32), axis=0)).to(GPU)
             x, y = self.network(i)
             x = F.softmax(
                 x.view((-1,))).data.numpy().reshape((CHESSBOARD_SIZE, CHESSBOARD_SIZE))
@@ -52,9 +54,9 @@ class GobangSelfPlayDataset(Dataset):
         i = 0
         while t.root is None or not t.root.terminated:
             with torch.no_grad():
-                t.search(1000, i >= 10)
+                t.search(1000)
 
-            p = t.get_pi(1 if i < 10 else 0)
+            p = t.get_pi(1)
             self.records.append({
                 "chessboard": t.root.chessboard,
                 "p": p,
@@ -98,6 +100,7 @@ class GobangSelfPlayDataset(Dataset):
 
 def train():
     network = ResNet()
+    network.to(GPU)
 
     optimizer = optim.Adam(
         network.parameters(),
@@ -110,9 +113,9 @@ def train():
 
         network.train()
         for _, batch in enumerate(data_loader):
-            chessboard = batch["chessboard"]
-            p = batch["p"]
-            v = batch["v"]
+            chessboard = batch["chessboard"].to(GPU)
+            p = batch["p"].to(GPU)
+            v = batch["v"].to(GPU)
 
             optimizer.zero_grad()
             out_p, out_v = network(chessboard)
