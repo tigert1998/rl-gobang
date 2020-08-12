@@ -10,7 +10,7 @@ _DIRS = [[0, 1], [-1, 1], [-1, 0], [-1, -1]]
 def stone_is_valid(chessboard, x, y) -> bool:
     if min(x, y) < 0 or max(x, y) >= CHESSBOARD_SIZE:
         return False
-    if chessboard[0, :, x, y].sum() > 0:
+    if chessboard[:, x, y].sum() > 0:
         return False
     return True
 
@@ -27,7 +27,7 @@ def get_winner(chessboard):
         -1 represents the game should continue.
         Besides, -2 means the game has ended but there is no winner.
     """
-    assert chessboard.shape == (1, 2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)
+    assert chessboard.shape == (2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)
 
     for a in [0, 1]:
         for x, y, d in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE), _DIRS):
@@ -37,7 +37,7 @@ def get_winner(chessboard):
                 if min(nx, ny) < 0 or max(nx, ny) >= CHESSBOARD_SIZE:
                     yes = False
                 else:
-                    yes &= chessboard[0, a, nx, ny] > 0
+                    yes &= chessboard[a, nx, ny] > 0
             if yes:
                 return a
 
@@ -48,7 +48,7 @@ def get_winner(chessboard):
 
 
 def simple_heuristics(chessboard) -> float:
-    assert chessboard.shape == (1, 2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)
+    assert chessboard.shape == (2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)
 
     heuristics = [0.0, 0.0]
     rank = [0, 0, 1, 1e2, 1e4, 1e6]
@@ -58,7 +58,7 @@ def simple_heuristics(chessboard) -> float:
             break_flag = False
             for i in range(IN_A_ROW):
                 nx, ny = np.array([x, y]) + np.array(d) * i
-                if min(nx, ny) < 0 or max(nx, ny) >= CHESSBOARD_SIZE or not (chessboard[0, who, nx, ny] > 0):
+                if min(nx, ny) < 0 or max(nx, ny) >= CHESSBOARD_SIZE or not (chessboard[who, nx, ny] > 0):
                     break_flag = True
                     break
             if not break_flag:

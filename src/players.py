@@ -59,7 +59,7 @@ class AIPlayer(Player):
 
     def evaluate(self, who, chessboard):
         if who == 1:
-            chessboard = chessboard[:, ::-1, :, :]
+            chessboard = chessboard[::-1, :, :]
         return self.policy(chessboard)
 
 
@@ -79,9 +79,9 @@ RANDOM_PLAYER = AIPlayer(_random_policy)
 
 def _basic_mcts_policy(chessboard):
     def base_policy(_):
-        policy = np.ones((1, CHESSBOARD_SIZE, CHESSBOARD_SIZE)) \
+        policy = np.ones((CHESSBOARD_SIZE, CHESSBOARD_SIZE)) \
             / CHESSBOARD_SIZE ** 2
-        value = np.array([[0]])
+        value = 0
         return policy, value
     t = MCTS(0, chessboard, base_policy)
     t.search(1600)
@@ -104,13 +104,13 @@ def _greedy_policy(chessboard):
     highest = -np.inf
     choice = None
     for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
-        if chessboard[0, :, x, y].sum() > 0:
+        if chessboard[:, x, y].sum() > 0:
             continue
         new_chessboard = chessboard.copy()
-        new_chessboard[0, 0, x, y] = 1
+        new_chessboard[0, x, y] = 1
         v = simple_heuristics(new_chessboard)
-        new_chessboard[0, 0, x, y] = 0
-        new_chessboard[0, 1, x, y] = 1
+        new_chessboard[0, x, y] = 0
+        new_chessboard[1, x, y] = 1
         v -= simple_heuristics(new_chessboard)
         if v > highest:
             highest = v
@@ -123,10 +123,9 @@ GREEDY_PLAYER = AIPlayer(_greedy_policy)
 
 def _greedy_mcts_policy(chessboard):
     def base_policy(chessboard):
-        policy = np.ones((1, CHESSBOARD_SIZE, CHESSBOARD_SIZE)) \
+        policy = np.ones((CHESSBOARD_SIZE, CHESSBOARD_SIZE)) \
             / CHESSBOARD_SIZE ** 2
         value = simple_heuristics(chessboard)
-        value = np.array([[value]])
         return policy, value
     t = MCTS(0, chessboard, base_policy)
     t.search(800)

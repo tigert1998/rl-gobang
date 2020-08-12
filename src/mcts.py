@@ -15,11 +15,11 @@ class MCTSNode:
         self.me = me
         self.chessboard = chessboard
         self.network = network
+        self.use_p_noise = False
+        self.p_noise = np.zeros((CHESSBOARD_SIZE, CHESSBOARD_SIZE))
 
         assert self.me in [0, 1]
-        assert self.chessboard.shape == (
-            1, 2, CHESSBOARD_SIZE, CHESSBOARD_SIZE
-        )
+        assert self.chessboard.shape == (2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)
 
         winner = get_winner(self.chessboard)
         self.terminated = winner != -1
@@ -30,18 +30,22 @@ class MCTSNode:
                 [None] * CHESSBOARD_SIZE
                 for _ in range(CHESSBOARD_SIZE)
             ]
-            p, v = self.network(self.chessboard)
-            self.p = p[0, :, :]
-            self.v = v[0, 0]
+            self.p, self.v = self.network(self.chessboard)
 
         self.n = 0
         self.sigma_v = 0
 
     def _construct_child_chessboard(self, x, y):
         ret = self.chessboard.copy()
-        ret = ret[:, ::-1, :, :]
-        ret[0, 1, x, y] = 1
+        ret = ret[::-1, :, :]
+        ret[1, x, y] = 1
         return ret
+
+    def set_p_noise(self, dirichlet_alpha: float):
+        self.use_p_noise = True
+        self.p_noise = np.random.dirichlet(
+            dirichlet_alpha * np.ones((CHESSBOARD_SIZE ** 2,))).reshape(
+                (CHESSBOARD_SIZE, CHESSBOARD_SIZE))
 
     def q(self):
         return self.sigma_v * 1.0 / self.n
@@ -63,14 +67,19 @@ class MCTSNode:
         highest = -np.inf
 
         for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
-            if self.chessboard[0, ::, x, y].sum() > 0:
+            if self.chessboard[:, x, y].sum() > 0:
                 continue
             child = self.childs[x][y]
+            if self.use_p_noise:
+                e = 0.25
+                p = (1 - e) * self.p[x][y] + e * self.p_noise[x][y]
+            else:
+                p = self.p[x][y]
             if child is None:
-                tmp = cpuct * self.p[x][y] * (self.n ** 0.5)
+                tmp = cpuct * p * (self.n ** 0.5)
             else:
                 tmp = -self.childs[x][y].q() +\
-                    cpuct * self.p[x][y] * (self.n ** 0.5) / (child.n + 1)
+                    cpuct * p * (self.n ** 0.5) / (child.n + 1)
 
             if tmp > highest:
                 highest = tmp
@@ -92,16 +101,21 @@ class MCTS:
         t.root = node
         return t
 
-    def search(self, num_sims: int):
+    def search(self, num_sims: int, use_p_noise=False):
         if self.root is None:
             self.root = MCTSNode(self.me, self.chessboard, self.network)
+
+        if use_p_noise:
+            dirichlet_alpha = 0.03
+            self.root.set_p_noise(dirichlet_alpha)
+
         for _ in range(num_sims):
             self.simulate()
 
     def simulate(self):
         node = self.root
 
-        cpuct = 1
+        cpuct = 5
 
         expanded = False
         path = [node]

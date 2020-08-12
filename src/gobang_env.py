@@ -33,13 +33,13 @@ class VisualArena:
 
         chessboard = initial_chessboard
         if chessboard is None:
-            chessboard = np.zeros((1, 2, CHESSBOARD_SIZE, CHESSBOARD_SIZE))
+            chessboard = np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE))
         for x, y, who in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE), range(2)):
-            if chessboard[0, who, x, y] > 0:
+            if chessboard[who, x, y] > 0:
                 self.place_stone(who, x, y)
         if initial_player is None:
-            who = 1 if (chessboard[0, 0, :, :].sum() >
-                        chessboard[0, 1, :, :].sum()) else 0
+            who = 1 if (chessboard[0, :, :].sum() >
+                        chessboard[1, :, :].sum()) else 0
         else:
             who = initial_player
 
@@ -54,7 +54,7 @@ class VisualArena:
                         self.INFO[who][0], x, y)
                     logging.error(msg)
                     break
-                chessboard[0, who, x, y] = 1
+                chessboard[who, x, y] = 1
                 self.place_stone(who, x, y)
                 winner = get_winner(chessboard)
                 if winner >= 0:

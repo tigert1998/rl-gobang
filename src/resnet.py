@@ -21,7 +21,7 @@ class ResidualBlock(nn.Module):
 
 
 class ResNet(nn.Module):
-    NUM_RESIDUAL_BLOCKS = 3
+    NUM_RESIDUAL_BLOCKS = 1
 
     def __init__(self):
         super(ResNet, self).__init__()
@@ -53,5 +53,5 @@ class ResNet(nn.Module):
     def forward(self, x):
         net = self.module_list(x)
         ret0 = self.policy_head(net).view(-1, CHESSBOARD_SIZE, CHESSBOARD_SIZE)
-        ret1 = self.value_head(net)
+        ret1 = self.value_head(net)[:, 0]
         return (ret0, ret1)
