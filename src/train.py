@@ -4,6 +4,7 @@ import itertools
 import numpy as np
 import torch
 import torch.optim as optim
+import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
 from mcts import MCTS
@@ -38,16 +39,20 @@ class GobangSelfPlayDataset(Dataset):
             i = torch.from_numpy(np.expand_dims(
                 chessboard.astype(np.float32), axis=0))
             x, y = self.network(i)
-            return x.data.numpy()[0, :, :], y.data.numpy()[0]
+            x = F.softmax(
+                x.view((-1,))).data.numpy().reshape((CHESSBOARD_SIZE, CHESSBOARD_SIZE))
+            y = y.data.numpy()[0]
+            return x, y
 
-        chessboard = np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE))
+        chessboard = np.zeros(
+            (2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)).astype(np.float32)
         t = MCTS(0, chessboard, base_policy)
 
         self.network.eval()
         i = 0
         while t.root is None or not t.root.terminated:
             with torch.no_grad():
-                t.search(1600, i >= 10)
+                t.search(1000, i >= 10)
 
             p = t.get_pi(1 if i < 10 else 0)
             self.records.append({
@@ -94,15 +99,35 @@ class GobangSelfPlayDataset(Dataset):
 def train():
     network = ResNet()
 
-    dataset = GobangSelfPlayDataset(network)
-    data_loader = DataLoader(dataset, batch_size=4)
+    optimizer = optim.Adam(
+        network.parameters(),
+        weight_decay=1e-4
+    )
 
-    for i_batch, sample_batched in enumerate(data_loader):
-        print(
-            i_batch, sample_batched['chessboard'].size(),
-            sample_batched['p'].size(),
-            sample_batched["v"]
-        )
+    for game in range(500):
+        dataset = GobangSelfPlayDataset(network)
+        data_loader = DataLoader(dataset, batch_size=4)
+
+        network.train()
+        for _, batch in enumerate(data_loader):
+            chessboard = batch["chessboard"]
+            p = batch["p"]
+            v = batch["v"]
+
+            optimizer.zero_grad()
+            out_p, out_v = network(chessboard)
+
+            loss = F.mse_loss(v, out_v) - \
+                torch.mean(torch.sum(
+                    F.log_softmax(out_p.view((-1, CHESSBOARD_SIZE ** 2))) *
+                    p.view((-1, CHESSBOARD_SIZE ** 2)), axis=1
+                ))
+
+            loss.backward()
+            optimizer.step()
+
+        if game % 50 == 0:
+            torch.save(network.state_dict(), "{}.pt".format(game))
 
 
 if __name__ == "__main__":

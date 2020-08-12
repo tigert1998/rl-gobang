@@ -32,6 +32,11 @@ class MCTSNode:
             ]
             self.p, self.v = self.network(self.chessboard)
 
+            p_sum = self.p.sum()
+            eps = 1e-3
+            assert 1 - eps <= p_sum and p_sum <= 1 + eps
+            assert -1 <= self.v and self.v <= 1
+
         self.n = 0
         self.sigma_v = 0
 

@@ -37,7 +37,6 @@ class ResNet(nn.Module):
             nn.ReLU(),
             nn.Flatten(),
             nn.Linear(CHESSBOARD_SIZE ** 2 * 2, CHESSBOARD_SIZE ** 2),
-            nn.Softmax()
         )
         self.value_head = nn.Sequential(
             nn.Conv2d(256, 1, 1),
