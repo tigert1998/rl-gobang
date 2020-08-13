@@ -18,10 +18,10 @@ GPU = torch.device("cuda:0")
 
 
 class GobangSelfPlayDataset(Dataset):
-    def __init__(self, network):
+    def __init__(self, network, num_self_play_threads):
         self.network = network
         self.records = []
-        self._self_play()
+        self._self_play(num_self_play_threads)
         self._augument()
         for i in self:
             i["chessboard"] = i["chessboard"].copy()
@@ -39,7 +39,7 @@ class GobangSelfPlayDataset(Dataset):
             tmp -= pi[x][y]
         return CHESSBOARD_SIZE - 1, CHESSBOARD_SIZE - 1
 
-    def _self_play(self):
+    def _self_play(self, num_threads):
         def base_policy(chessboard):
             i = torch.from_numpy(np.expand_dims(
                 chessboard.copy(), axis=0)).to(GPU)
@@ -57,7 +57,7 @@ class GobangSelfPlayDataset(Dataset):
         i = 0
         while t.root is None or not t.root.terminated:
             with torch.no_grad():
-                t.search(1000)
+                t.search(1000, num_threads=num_threads)
 
             p = t.get_pi(1)
             self.records.append({
@@ -114,7 +114,7 @@ def train():
         logging.info("starting game #{}".format(game))
 
         start_t = time.time()
-        dataset = GobangSelfPlayDataset(network)
+        dataset = GobangSelfPlayDataset(network, 4)
         logging.info("self-playing takes {:.2f}s".format(
             time.time() - start_t))
 

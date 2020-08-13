@@ -1,4 +1,5 @@
 import itertools
+import threading
 
 import torch
 import numpy as np
@@ -12,6 +13,7 @@ class MCTSNode:
             self, me, chessboard: np.array,
             network
     ):
+        self.lock = threading.Lock()
         self.me = me
         self.chessboard = chessboard
         self.network = network
@@ -56,18 +58,25 @@ class MCTSNode:
         return self.sigma_v * 1.0 / self.n
 
     def backup(self, delta_v):
+        self.lock.acquire()
         self.n += 1
         self.sigma_v += delta_v
+        self.lock.release()
 
-    def expand(self, x, y):
-        assert self.childs[x][y] is None
-        self.childs[x][y] = MCTSNode(
-            1 - self.me,
-            self._construct_child_chessboard(x, y),
-            self.network
-        )
+    def expand(self, x, y) -> bool:
+        self.lock.acquire()
+        ret = self.childs[x][y] is None
+        if ret:
+            self.childs[x][y] = MCTSNode(
+                1 - self.me,
+                self._construct_child_chessboard(x, y),
+                self.network
+            )
+        self.lock.release()
+        return ret
 
     def select(self, cpuct):
+        self.lock.acquire()
         ret = None
         highest = -np.inf
 
@@ -90,6 +99,7 @@ class MCTSNode:
                 highest = tmp
                 ret = (x, y)
 
+        self.lock.release()
         return ret
 
 
@@ -106,7 +116,7 @@ class MCTS:
         t.root = node
         return t
 
-    def search(self, num_sims: int, use_p_noise=False):
+    def search(self, num_sims: int, use_p_noise=False, num_threads=1):
         if self.root is None:
             self.root = MCTSNode(self.me, self.chessboard, self.network)
 
@@ -114,8 +124,23 @@ class MCTS:
             dirichlet_alpha = 0.03
             self.root.set_p_noise(dirichlet_alpha)
 
-        for _ in range(num_sims):
-            self.simulate()
+        def task(num_sims):
+            for _ in range(num_sims):
+                self.simulate()
+
+        if num_threads == 1:
+            task(num_sims)
+        else:
+            assert num_threads >= 2
+            threads = []
+            for i in range(num_threads):
+                tot = num_sims // num_threads
+                if i < num_sims % num_threads:
+                    tot += 1
+                threads.append(threading.Thread(target=task, args=(tot, )))
+                threads[-1].start()
+            for thread in threads:
+                thread.join()
 
     def simulate(self):
         node = self.root
@@ -126,9 +151,7 @@ class MCTS:
         path = [node]
         while not node.terminated and not expanded:
             x, y = node.select(cpuct)
-            if node.childs[x][y] is None:
-                node.expand(x, y)
-                expanded = True
+            expanded = node.expand(x, y)
             node = node.childs[x][y]
             path.append(node)
 
