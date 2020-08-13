@@ -8,6 +8,7 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
+from tqdm import tqdm
 
 from mcts import MCTS
 from resnet import ResNet
@@ -53,6 +54,7 @@ class GobangSelfPlayDataset(Dataset):
             .astype(np.float32)
         t = MCTS(0, chessboard, base_policy)
 
+        pbar = tqdm(total=CHESSBOARD_SIZE ** 2)
         self.network.eval()
         i = 0
         while t.root is None or not t.root.terminated:
@@ -68,8 +70,10 @@ class GobangSelfPlayDataset(Dataset):
             x, y = self._action_from_pi(p)
             t = MCTS.from_mcts_node(t.root.childs[x][y])
             i += 1
+            pbar.update(1)
+        pbar.close()
 
-        self.records[-1]["v"] = float(-t.root.v)
+        self.records[-1]["v"] = np.float32(-t.root.v)
 
         for i in reversed(range(len(self.records) - 1)):
             self.records[i]["v"] = -self.records[i + 1]["v"]
