@@ -6,10 +6,13 @@ import itertools
 import logging
 
 import numpy as np
+import torch
+import torch.nn.functional as F
 
 from utils import stone_is_valid, simple_heuristics
 from constants import CHESSBOARD_SIZE
 from mcts import MCTS
+from resnet import ResNet
 
 
 class Player:
@@ -139,3 +142,31 @@ def _greedy_mcts_policy(chessboard):
 
 
 GREEDY_MCTS_PLAYER = AIPlayer(_greedy_mcts_policy)
+
+
+class NNMCTSAIPlayer(AIPlayer):
+    def __init__(self, ckpt_path):
+        ckpt = torch.load(ckpt_path, map_location="cpu")
+        self.network = ResNet()
+        self.network.load_state_dict(ckpt)
+        self.network.eval()
+
+        def policy(chessboard):
+            def base_policy(chessboard):
+                i = torch.from_numpy(np.expand_dims(chessboard.astype(np.float32), axis=0))
+                x, y = self.network(i)
+                x = F.softmax(x.view((-1,))).cpu().data.numpy().reshape(
+                    (CHESSBOARD_SIZE, CHESSBOARD_SIZE))
+                y = y.cpu().data.numpy()[0]
+                return x, y
+            t = MCTS(0, chessboard, base_policy)
+            t.search(800)
+            pi = t.get_pi(0)
+            choices = []
+            for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
+                if pi[x, y] > 0:
+                    choices.append((x, y))
+            logging.info("mcts.q = {}".format(t.root.q()))
+            return choices[random.randint(0, len(choices) - 1)]
+
+        super().__init__(policy)

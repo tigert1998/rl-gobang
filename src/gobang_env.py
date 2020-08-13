@@ -8,8 +8,7 @@ import numpy as np
 
 from constants import CHESSBOARD_SIZE
 from atomic_value import AtomicValue
-from players import Player, \
-    HUMAN_PLAYER, BASIC_MCTS_PLAYER, GREEDY_PLAYER, GREEDY_MCTS_PLAYER
+from players import *
 from utils import stone_is_valid, get_winner, config_log
 
 
@@ -97,5 +96,6 @@ class VisualArena:
 if __name__ == "__main__":
     config_log()
 
-    arena = VisualArena([GREEDY_MCTS_PLAYER, BASIC_MCTS_PLAYER])
+    player = NNMCTSAIPlayer("/Users/tigertang/Desktop/50.pt")
+    arena = VisualArena([player, HUMAN_PLAYER])
     arena.event_loop()
