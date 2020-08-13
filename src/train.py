@@ -1,5 +1,6 @@
 import random
 import itertools
+import logging
 
 import numpy as np
 import torch
@@ -10,6 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 from mcts import MCTS
 from resnet import ResNet
 from constants import CHESSBOARD_SIZE
+from utils import config_log
 
 GPU = torch.device("cuda:0")
 
@@ -38,12 +40,11 @@ class GobangSelfPlayDataset(Dataset):
 
     def _self_play(self):
         def base_policy(chessboard):
-            i = torch.from_numpy(np.expand_dims(
-                chessboard.astype(np.float32), axis=0)).to(GPU)
+            i = torch.from_numpy(np.expand_dims(chessboard.copy(), axis=0)).to(GPU)
             x, y = self.network(i)
             x = F.softmax(
-                x.view((-1,))).data.numpy().reshape((CHESSBOARD_SIZE, CHESSBOARD_SIZE))
-            y = y.data.numpy()[0]
+                x.view((-1,))).cpu().data.numpy().reshape((CHESSBOARD_SIZE, CHESSBOARD_SIZE))
+            y = y.cpu().data.numpy()[0]
             return x, y
 
         chessboard = np.zeros(
@@ -58,15 +59,15 @@ class GobangSelfPlayDataset(Dataset):
 
             p = t.get_pi(1)
             self.records.append({
-                "chessboard": t.root.chessboard,
-                "p": p,
+                "chessboard": t.root.chessboard.astype(np.float32),
+                "p": p.astype(np.float32),
                 "v": None
             })
             x, y = self._action_from_pi(p)
             t = MCTS.from_mcts_node(t.root.childs[x][y])
             i += 1
 
-        self.records[-1]["v"] = -t.root.v
+        self.records[-1]["v"] = float(-t.root.v)
 
         for i in reversed(range(len(self.records) - 1)):
             self.records[i]["v"] = -self.records[i + 1]["v"]
@@ -108,14 +109,15 @@ def train():
     )
 
     for game in range(500):
+        logging.info("starting game #{}".format(game))
         dataset = GobangSelfPlayDataset(network)
-        data_loader = DataLoader(dataset, batch_size=4)
+        data_loader = DataLoader(dataset, batch_size=64)
 
         network.train()
         for _, batch in enumerate(data_loader):
             chessboard = batch["chessboard"].to(GPU)
             p = batch["p"].to(GPU)
-            v = batch["v"].to(GPU)
+            v = batch["v"].type(torch.FloatTensor).to(GPU)
 
             optimizer.zero_grad()
             out_p, out_v = network(chessboard)
@@ -123,7 +125,8 @@ def train():
             loss = F.mse_loss(v, out_v) - \
                 torch.mean(torch.sum(
                     F.log_softmax(out_p.view((-1, CHESSBOARD_SIZE ** 2))) *
-                    p.view((-1, CHESSBOARD_SIZE ** 2)), axis=1
+                    p.view((-1, CHESSBOARD_SIZE ** 2)),
+                    dim=1
                 ))
 
             loss.backward()
@@ -134,4 +137,5 @@ def train():
 
 
 if __name__ == "__main__":
+    config_log()
     train()

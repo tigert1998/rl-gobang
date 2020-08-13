@@ -4,6 +4,10 @@ import torch.nn.functional as F
 from constants import CHESSBOARD_SIZE
 
 
+class Flatten(nn.Module):
+    def forward(self, input):
+        return input.view(input.size(0), -1)
+
 class ResidualBlock(nn.Module):
     def __init__(self):
         super(ResidualBlock, self).__init__()
@@ -35,14 +39,14 @@ class ResNet(nn.Module):
             nn.Conv2d(256, 2, 1),
             nn.BatchNorm2d(2),
             nn.ReLU(),
-            nn.Flatten(),
+            Flatten(),
             nn.Linear(CHESSBOARD_SIZE ** 2 * 2, CHESSBOARD_SIZE ** 2),
         )
         self.value_head = nn.Sequential(
             nn.Conv2d(256, 1, 1),
             nn.BatchNorm2d(1),
             nn.ReLU(),
-            nn.Flatten(),
+            Flatten(),
             nn.Linear(CHESSBOARD_SIZE ** 2, 256),
             nn.ReLU(),
             nn.Linear(256, 1),

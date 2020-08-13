@@ -1,7 +1,6 @@
 import threading
 from typing import List
 import logging
-import sys
 import itertools
 
 import pygame
@@ -11,7 +10,7 @@ from constants import CHESSBOARD_SIZE
 from atomic_value import AtomicValue
 from players import Player, \
     HUMAN_PLAYER, BASIC_MCTS_PLAYER, GREEDY_PLAYER, GREEDY_MCTS_PLAYER
-from utils import stone_is_valid, get_winner
+from utils import stone_is_valid, get_winner, config_log
 
 
 class VisualArena:
@@ -93,18 +92,6 @@ class VisualArena:
             (20 + y * 40, 20 + x * 40), 16
         )
         pygame.display.update()
-
-
-def config_log():
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
-
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter(
-        '[%(asctime)s] [%(levelname)s] %(message)s')
-    handler.setFormatter(formatter)
-    root.addHandler(handler)
 
 
 if __name__ == "__main__":

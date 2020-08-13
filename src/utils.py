@@ -1,4 +1,6 @@
+import sys
 import itertools
+import logging
 
 import numpy as np
 
@@ -69,3 +71,15 @@ def simple_heuristics(chessboard) -> float:
     if not (deno > 0):
         return 0
     return 2 * heuristics[0] / deno - 1
+
+
+def config_log():
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
+
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        '[%(asctime)s] [%(levelname)s] %(message)s')
+    handler.setFormatter(formatter)
+    root.addHandler(handler)
