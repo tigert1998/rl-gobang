@@ -2,6 +2,7 @@ import random
 import itertools
 import logging
 import time
+import threading
 
 import numpy as np
 import torch
@@ -41,10 +42,16 @@ class GobangSelfPlayDataset(Dataset):
         return CHESSBOARD_SIZE - 1, CHESSBOARD_SIZE - 1
 
     def _self_play(self, num_threads):
+        network_lock = threading.Lock()
+
         def base_policy(chessboard):
             i = torch.from_numpy(np.expand_dims(
                 chessboard.copy(), axis=0)).to(GPU)
+
+            network_lock.acquire()
             x, y = self.network(i)
+            network_lock.release()
+
             x = F.softmax(x.view((-1,)), dim=-1).cpu()\
                 .data.numpy().reshape((CHESSBOARD_SIZE, CHESSBOARD_SIZE))
             y = y.cpu().data.numpy()[0]
