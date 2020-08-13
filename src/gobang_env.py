@@ -32,6 +32,7 @@ class VisualArena:
         chessboard = initial_chessboard
         if chessboard is None:
             chessboard = np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE))
+        chessboard = chessboard.astype(np.float32)
         for x, y, who in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE), range(2)):
             if chessboard[who, x, y] > 0:
                 self.place_stone(who, x, y)
@@ -96,6 +97,6 @@ class VisualArena:
 if __name__ == "__main__":
     config_log()
 
-    player = NNMCTSAIPlayer("/Users/tigertang/Desktop/50.pt")
-    arena = VisualArena([player, HUMAN_PLAYER])
+    player = NNMCTSAIPlayer("/Users/tigertang/Desktop/250.pt")
+    arena = VisualArena([HUMAN_PLAYER, player])
     arena.event_loop()

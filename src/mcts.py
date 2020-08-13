@@ -162,4 +162,4 @@ class MCTS:
         else:
             pi = pi / deno
 
-        return pi
+        return pi.astype(np.float32)

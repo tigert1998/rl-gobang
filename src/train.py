@@ -1,6 +1,7 @@
 import random
 import itertools
 import logging
+import time
 
 import numpy as np
 import torch
@@ -40,15 +41,16 @@ class GobangSelfPlayDataset(Dataset):
 
     def _self_play(self):
         def base_policy(chessboard):
-            i = torch.from_numpy(np.expand_dims(chessboard.copy(), axis=0)).to(GPU)
+            i = torch.from_numpy(np.expand_dims(
+                chessboard.copy(), axis=0)).to(GPU)
             x, y = self.network(i)
-            x = F.softmax(
-                x.view((-1,))).cpu().data.numpy().reshape((CHESSBOARD_SIZE, CHESSBOARD_SIZE))
+            x = F.softmax(x.view((-1,)), dim=-1).cpu()\
+                .data.numpy().reshape((CHESSBOARD_SIZE, CHESSBOARD_SIZE))
             y = y.cpu().data.numpy()[0]
             return x, y
 
-        chessboard = np.zeros(
-            (2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)).astype(np.float32)
+        chessboard = np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE))\
+            .astype(np.float32)
         t = MCTS(0, chessboard, base_policy)
 
         self.network.eval()
@@ -59,8 +61,8 @@ class GobangSelfPlayDataset(Dataset):
 
             p = t.get_pi(1)
             self.records.append({
-                "chessboard": t.root.chessboard.astype(np.float32),
-                "p": p.astype(np.float32),
+                "chessboard": t.root.chessboard,
+                "p": p,
                 "v": None
             })
             x, y = self._action_from_pi(p)
@@ -110,27 +112,36 @@ def train():
 
     for game in range(500):
         logging.info("starting game #{}".format(game))
-        dataset = GobangSelfPlayDataset(network)
-        data_loader = DataLoader(dataset, batch_size=64)
 
+        start_t = time.time()
+        dataset = GobangSelfPlayDataset(network)
+        logging.info("self-playing takes {:.2f}s".format(
+            time.time() - start_t))
+
+        data_loader = DataLoader(dataset, batch_size=64, shuffle=True)
+
+        start_t = time.time()
         network.train()
-        for _, batch in enumerate(data_loader):
+        for batch_idx, batch in enumerate(data_loader):
             chessboard = batch["chessboard"].to(GPU)
             p = batch["p"].to(GPU)
-            v = batch["v"].type(torch.FloatTensor).to(GPU)
+            v = batch["v"].to(GPU)
+            logging.info("batch #{}, size = {}".format(batch_idx, v.size(0)))
 
             optimizer.zero_grad()
             out_p, out_v = network(chessboard)
 
             loss = F.mse_loss(v, out_v) - \
                 torch.mean(torch.sum(
-                    F.log_softmax(out_p.view((-1, CHESSBOARD_SIZE ** 2))) *
+                    F.log_softmax(out_p.view((-1, CHESSBOARD_SIZE ** 2)), dim=-1) *
                     p.view((-1, CHESSBOARD_SIZE ** 2)),
                     dim=1
                 ))
 
             loss.backward()
             optimizer.step()
+        logging.info("training game takes {:.2f}s".format(
+            time.time() - start_t))
 
         if game % 50 == 0:
             torch.save(network.state_dict(), "{}.pt".format(game))

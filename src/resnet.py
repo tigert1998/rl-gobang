@@ -1,12 +1,14 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from constants import CHESSBOARD_SIZE
 
 
 class Flatten(nn.Module):
-    def forward(self, input):
-        return input.view(input.size(0), -1)
+    def forward(self, x):
+        return x.view(x.size(0), -1)
+
 
 class ResidualBlock(nn.Module):
     def __init__(self):

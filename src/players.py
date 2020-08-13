@@ -153,9 +153,9 @@ class NNMCTSAIPlayer(AIPlayer):
 
         def policy(chessboard):
             def base_policy(chessboard):
-                i = torch.from_numpy(np.expand_dims(chessboard.astype(np.float32), axis=0))
+                i = torch.from_numpy(np.expand_dims(chessboard.copy(), axis=0))
                 x, y = self.network(i)
-                x = F.softmax(x.view((-1,))).cpu().data.numpy().reshape(
+                x = F.softmax(x.view((-1,)), dim=-1).cpu().data.numpy().reshape(
                     (CHESSBOARD_SIZE, CHESSBOARD_SIZE))
                 y = y.cpu().data.numpy()[0]
                 return x, y
