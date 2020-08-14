@@ -36,7 +36,7 @@ void MCTS::Simulate() {
 
   double delta_v = node->v();
   for (int i = path_size - 1; i >= 0; i--) {
-    node->Backup(delta_v);
+    path[i]->Backup(delta_v);
     delta_v = -delta_v;
   }
 }
@@ -64,6 +64,7 @@ void MCTS::GetPi(double temperature, double* out) {
         if (child->n() > highest) {
           pos.clear();
           pos.push_back({x, y});
+          highest = child->n();
         } else if (child->n() == highest) {
           pos.push_back({x, y});
         }

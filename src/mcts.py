@@ -19,7 +19,7 @@ class MCTS:
 
         callback_t = ctypes.CFUNCTYPE(
             None,
-            ctypes.c_char_p,
+            ctypes.POINTER(ctypes.c_byte),
             ctypes.POINTER(ctypes.c_double),
             ctypes.POINTER(ctypes.c_double)
         )
@@ -29,7 +29,7 @@ class MCTS:
         def callback(chessboard, out_p_ptr, out_v_ptr):
             chessboard_numpy = np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE))\
                 .astype(np.float32)
-            for who, x, y in itertools.product(range(2), range(CHESSBOARD_SIZE, CHESSBOARD_SIZE)):
+            for who, x, y in itertools.product(range(2), range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
                 idx = (who * CHESSBOARD_SIZE + x) * CHESSBOARD_SIZE + y
                 if int(chessboard[idx]) > 0:
                     chessboard_numpy[who][x][y] = 1

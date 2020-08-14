@@ -66,9 +66,9 @@ class VisualArena:
             logging.info("chessboard = {}".format(chessboard))
 
         thread = threading.Thread(target=player_loop, args=(chessboard, who))
-        thread.start()
 
         pygame.display.update()
+        thread.start()
         while True:
             event = pygame.event.wait()
             if event.type == pygame.QUIT:
@@ -98,5 +98,5 @@ if __name__ == "__main__":
     config_log()
 
     # player = NNMCTSAIPlayer("/Users/tigertang/Desktop/250.pt")
-    arena = VisualArena([HUMAN_PLAYER, BASIC_MCTS_PLAYER])
+    arena = VisualArena([GREEDY_PLAYER, BASIC_MCTS_PLAYER])
     arena.event_loop()

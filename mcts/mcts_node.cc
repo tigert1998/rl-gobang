@@ -4,9 +4,10 @@
 
 MCTSNode::MCTSNode(const Chessboard &chessboard, const PolicyCallback &policy)
     : chessboard_(chessboard), policy_(policy) {
+  std::fill(childs_, childs_ + CHESSBOARD_SIZE * CHESSBOARD_SIZE, nullptr);
+
   int winner = chessboard_.GetWinner();
   terminated_ = winner != -1;
-
   if (terminated_) {
     v_ = winner == -2 ? 0 : (winner == 0 ? 1 : -1);
   } else {

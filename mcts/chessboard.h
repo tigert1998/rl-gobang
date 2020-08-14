@@ -1,11 +1,13 @@
 #ifndef MCTS_CHESSBOARD_H_
 #define MCTS_CHESSBOARD_H_
 
+#include <algorithm>
+
 #include "config.h"
 
 class Chessboard {
  public:
-  inline Chessboard() = default;
+  inline Chessboard() { std::fill(std::begin(data_), std::end(data_), 0); }
 
   inline void Set(int c, int x, int y) { data_[Index(c, x, y)] = 1; }
 
