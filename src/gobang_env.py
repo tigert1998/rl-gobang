@@ -6,7 +6,7 @@ import itertools
 import pygame
 import numpy as np
 
-from constants import CHESSBOARD_SIZE
+from config import CHESSBOARD_SIZE
 from atomic_value import AtomicValue
 from players import *
 from utils import stone_is_valid, get_winner, config_log

@@ -1,0 +1,8 @@
+# defines the game
+CHESSBOARD_SIZE = 8
+IN_A_ROW = 5
+
+# defines the network
+NUM_RESIDUAL_BLOCKS = 3
+NUM_FILTERS = 32
+VALUE_HEAD_HIDDEN_UNITS = 128

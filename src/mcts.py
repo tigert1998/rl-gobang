@@ -1,11 +1,8 @@
 import itertools
-import threading
 
-import torch
 import numpy as np
-from readerwriterlock import rwlock
 
-from constants import CHESSBOARD_SIZE
+from config import CHESSBOARD_SIZE
 from utils import get_winner
 
 
@@ -14,7 +11,6 @@ class MCTSNode:
             self, me, chessboard: np.array,
             network
     ):
-        self.lock = rwlock.RWLockFair()
         self.me = me
         self.chessboard = chessboard
         self.network = network
@@ -59,25 +55,20 @@ class MCTSNode:
         return self.sigma_v * 1.0 / self.n
 
     def backup(self, delta_v):
-        with self.lock.gen_wlock():
-            self.n += 1
-            self.sigma_v += delta_v
+        self.n += 1
+        self.sigma_v += delta_v
 
     def expand(self, x, y) -> bool:
-        with self.lock.gen_wlock():
-            if self.childs[x][y] is not None:
-                return False
-            self.childs[x][y] = MCTSNode(
-                1 - self.me,
-                self._construct_child_chessboard(x, y),
-                self.network
-            )
-            return True
+        if self.childs[x][y] is not None:
+            return False
+        self.childs[x][y] = MCTSNode(
+            1 - self.me,
+            self._construct_child_chessboard(x, y),
+            self.network
+        )
+        return True
 
     def select(self, cpuct):
-        rlock = self.lock.gen_rlock()
-        rlock.acquire()
-
         ret = None
         highest = -np.inf
 
@@ -93,15 +84,13 @@ class MCTSNode:
             tmp = cpuct * p * (self.n ** 0.5)
             child = self.childs[x][y]
             if child is not None:
-                with child.lock.gen_rlock():
-                    if child.n > 0:
-                        tmp = -self.childs[x][y].q() + tmp / (child.n + 1)
+                if child.n > 0:
+                    tmp = -self.childs[x][y].q() + tmp / (child.n + 1)
 
             if tmp > highest:
                 highest = tmp
                 ret = (x, y)
 
-        rlock.release()
         return ret
 
 
@@ -118,7 +107,7 @@ class MCTS:
         t.root = node
         return t
 
-    def search(self, num_sims: int, use_p_noise=False, num_threads=1):
+    def search(self, num_sims: int, use_p_noise=False):
         if self.root is None:
             self.root = MCTSNode(self.me, self.chessboard, self.network)
 
@@ -126,23 +115,8 @@ class MCTS:
             dirichlet_alpha = 0.03
             self.root.set_p_noise(dirichlet_alpha)
 
-        def task(num_sims):
-            for _ in range(num_sims):
-                self.simulate()
-
-        if num_threads == 1:
-            task(num_sims)
-        else:
-            assert num_threads >= 2
-            threads = []
-            for i in range(num_threads):
-                tot = num_sims // num_threads
-                if i < num_sims % num_threads:
-                    tot += 1
-                threads.append(threading.Thread(target=task, args=(tot, )))
-                threads[-1].start()
-            for thread in threads:
-                thread.join()
+        for _ in range(num_sims):
+            self.simulate()
 
     def simulate(self):
         node = self.root

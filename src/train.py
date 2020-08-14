@@ -13,14 +13,14 @@ from tqdm import tqdm
 
 from mcts import MCTS
 from resnet import ResNet
-from constants import CHESSBOARD_SIZE
+from config import CHESSBOARD_SIZE
 from utils import config_log
 
 GPU = torch.device("cuda:0")
 
 
 class GobangSelfPlayDataset(Dataset):
-    def __init__(self, network, num_self_play_threads):
+    def __init__(self, network):
         self.network_replicas = []
         for i in range(1):
             new_network = copy.deepcopy(network)
@@ -28,7 +28,7 @@ class GobangSelfPlayDataset(Dataset):
             new_network.eval()
             self.network_replicas.append(new_network)
         self.records = []
-        self._self_play(num_self_play_threads)
+        self._self_play()
         self._augument()
         for i in self:
             i["chessboard"] = i["chessboard"].copy()
@@ -46,7 +46,7 @@ class GobangSelfPlayDataset(Dataset):
             tmp -= pi[x][y]
         return CHESSBOARD_SIZE - 1, CHESSBOARD_SIZE - 1
 
-    def _self_play(self, num_threads):
+    def _self_play(self):
         def base_policy(chessboard):
             idx = random.randint(0, len(self.network_replicas) - 1)
             i = torch.from_numpy(np.expand_dims(chessboard.copy(), axis=0))\
@@ -67,7 +67,7 @@ class GobangSelfPlayDataset(Dataset):
         i = 0
         while t.root is None or not t.root.terminated:
             with torch.no_grad():
-                t.search(1000, num_threads=num_threads)
+                t.search(1000)
 
             p = t.get_pi(1)
             self.records.append({
@@ -90,20 +90,16 @@ class GobangSelfPlayDataset(Dataset):
         ret = []
         for record in self.records:
             chessboard, p, v = record["chessboard"], record["p"], record["v"]
-            for option in range(4):
+            for option in range(8):
                 new_chessboard = chessboard
                 new_p = p
                 if (option & 1) > 0:
-                    new_chessboard = np.flip(new_chessboard, -2)
-                    new_p = np.flip(new_p, -2)
-                if (option & 2) > 0:
                     new_chessboard = np.flip(new_chessboard, -1)
                     new_p = np.flip(new_p, -1)
-                ret.append({"chessboard": new_chessboard, "p": new_p, "v": v})
+                rot_idx = option >> 1
+                new_chessboard = np.rot90(new_chessboard, rot_idx, (-2, -1))
+                new_p = np.rot90(new_p, rot_idx, (-2, -1))
 
-            for i in range(3):
-                new_chessboard = np.rot90(chessboard, i + 1, (-2, -1))
-                new_p = np.rot90(p, i + 1, (-2, -1))
                 ret.append({"chessboard": new_chessboard, "p": new_p, "v": v})
 
         np.random.shuffle(ret)
@@ -126,7 +122,7 @@ def train():
         logging.info("starting game #{}".format(game))
 
         start_t = time.time()
-        dataset = GobangSelfPlayDataset(network, 1)
+        dataset = GobangSelfPlayDataset(network)
         logging.info("self-playing takes {:.2f}s".format(
             time.time() - start_t))
 

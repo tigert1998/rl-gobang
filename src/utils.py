@@ -4,7 +4,7 @@ import logging
 
 import numpy as np
 
-from constants import CHESSBOARD_SIZE, IN_A_ROW
+from config import CHESSBOARD_SIZE, IN_A_ROW
 
 _DIRS = [[0, 1], [-1, 1], [-1, 0], [-1, -1]]
 

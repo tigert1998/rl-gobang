@@ -10,7 +10,7 @@ import torch
 import torch.nn.functional as F
 
 from utils import stone_is_valid, simple_heuristics
-from constants import CHESSBOARD_SIZE
+from config import CHESSBOARD_SIZE
 from mcts import MCTS
 from resnet import ResNet
 
