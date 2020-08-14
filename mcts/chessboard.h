@@ -1,13 +1,11 @@
 #ifndef MCTS_CHESSBOARD_H_
 #define MCTS_CHESSBOARD_H_
 
-#include <vector>
+#include "config.h"
 
 class Chessboard {
  public:
-  inline Chessboard(int chessboard_size) : chessboard_size_(chessboard_size) {
-    data_.resize(2 * chessboard_size * chessboard_size);
-  }
+  inline Chessboard() = default;
 
   inline void Set(int c, int x, int y) { data_[Index(c, x, y)] = 1; }
 
@@ -15,17 +13,18 @@ class Chessboard {
     return (int)data_[Index(c, x, y)];
   }
 
-  inline int Size() const { return chessboard_size_; }
-
   int GetWinner() const;
+
+  void SetMemory(char *ptr);
+
+  inline const char *Data() const { return data_; }
 
  private:
   inline int Index(int c, int x, int y) const {
-    return (c * chessboard_size_ + x) * chessboard_size_ + y;
+    return (c * CHESSBOARD_SIZE + x) * CHESSBOARD_SIZE + y;
   }
 
-  std::vector<char> data_;
-  int chessboard_size_;
+  char data_[2 * CHESSBOARD_SIZE * CHESSBOARD_SIZE];
 };
 
 #endif

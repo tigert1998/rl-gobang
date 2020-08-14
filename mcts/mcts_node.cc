@@ -3,17 +3,14 @@
 #include <cmath>
 
 MCTSNode::MCTSNode(const Chessboard &chessboard, const PolicyCallback &policy)
-    : chessboard_(chessboard),
-      policy_(policy),
-      chessboard_size_(chessboard.Size()) {
+    : chessboard_(chessboard), policy_(policy) {
   int winner = chessboard_.GetWinner();
   terminated_ = winner != -1;
 
   if (terminated_) {
     v_ = winner == -2 ? 0 : (winner == 0 ? 1 : -1);
   } else {
-    childs_.resize(chessboard_size_ * chessboard_size_);
-    policy_(chessboard_, &p_, &v_);
+    policy_(chessboard_, p_, &v_);
   }
 
   n_ = 0;
@@ -23,9 +20,9 @@ MCTSNode::MCTSNode(const Chessboard &chessboard, const PolicyCallback &policy)
 bool MCTSNode::Expand(int x, int y) {
   if (childs_[Index(x, y)] != nullptr) return false;
 
-  Chessboard new_chessboard(chessboard_size_);
-  for (int x = 0; x < chessboard_size_; x++)
-    for (int y = 0; y < chessboard_size_; y++) {
+  Chessboard new_chessboard;
+  for (int x = 0; x < CHESSBOARD_SIZE; x++)
+    for (int y = 0; y < CHESSBOARD_SIZE; y++) {
       for (int who : {0, 1})
         if (chessboard_.At(who, x, y) > 0) {
           new_chessboard.Set(1 - who, x, y);
@@ -47,8 +44,8 @@ std::pair<int, int> MCTSNode::Select(double cpuct) {
   std::pair<int, int> ans;
   double highest = -1e10;
 
-  for (int x = 0; x < chessboard_size_; x++)
-    for (int y = 0; y < chessboard_size_; y++) {
+  for (int x = 0; x < CHESSBOARD_SIZE; x++)
+    for (int y = 0; y < CHESSBOARD_SIZE; y++) {
       if (chessboard_.At(0, x, y) + chessboard_.At(1, x, y) > 0) {
         continue;
       }

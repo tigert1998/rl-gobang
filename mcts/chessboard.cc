@@ -1,33 +1,38 @@
 #include "chessboard.h"
 
+#include <algorithm>
+#include <memory>
+
 #include "config.h"
 
 int Chessboard::GetWinner() const {
   int tot = 0;
   for (int who : {0, 1})
-    for (int x = 0; x < chessboard_size_; x++)
-      for (int y = 0; y < chessboard_size_; y++) {
+    for (int x = 0; x < CHESSBOARD_SIZE; x++)
+      for (int y = 0; y < CHESSBOARD_SIZE; y++) {
         tot += data_[Index(who, x, y)] > 0;
         for (int d = 0; d < 4; d++) {
-          bool yes = true;
           for (int i = 0; i < IN_A_ROW; i++) {
             int nx = x + DIRS[d][0] * i;
             int ny = y + DIRS[d][1] * i;
-            if (std::min(nx, ny) < 0 || std::max(nx, ny) >= chessboard_size_) {
-              yes = false;
-            } else {
-              yes &= data_.at(Index(who, nx, ny)) > 0;
+            if (std::min(nx, ny) < 0 || std::max(nx, ny) >= CHESSBOARD_SIZE) {
+              goto fail_tag;
+            } else if (data_[Index(who, nx, ny)] == 0) {
+              goto fail_tag;
             }
           }
-          if (yes) {
-            return who;
-          }
+          return who;
+        fail_tag:;
         }
       }
 
-  if (tot >= chessboard_size_ * chessboard_size_) {
+  if (tot >= CHESSBOARD_SIZE * CHESSBOARD_SIZE) {
     return -2;
   }
 
   return -1;
+}
+
+void Chessboard::SetMemory(char *ptr) {
+  std::copy(ptr, ptr + 2 * CHESSBOARD_SIZE * CHESSBOARD_SIZE, data_);
 }

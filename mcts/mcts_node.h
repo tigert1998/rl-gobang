@@ -8,11 +8,12 @@
 #include <vector>
 
 #include "chessboard.h"
+#include "config.h"
 
 class MCTSNode {
  public:
-  using PolicyCallback = std::function<void(const Chessboard &,
-                                            std::vector<double> *p, double *v)>;
+  using PolicyCallback =
+      std::function<void(const Chessboard &, double *p, double *v)>;
 
   MCTSNode(const Chessboard &chessboard, const PolicyCallback &policy);
 
@@ -24,15 +25,26 @@ class MCTSNode {
 
   std::pair<int, int> Select(double cpuct);
 
- private:
-  inline int Index(int x, int y) { return x * chessboard_size_ + y; }
+  inline bool terminated() const { return terminated_; }
 
-  int chessboard_size_;
+  inline MCTSNode *child(int x, int y) { return childs_[Index(x, y)].get(); }
+
+  inline std::unique_ptr<MCTSNode> child_ownership(int x, int y) {
+    return std::move(childs_[Index(x, y)]);
+  }
+
+  inline double v() const { return v_; }
+
+  Chessboard chessboard() const { return chessboard_; }
+
+ private:
+  inline int Index(int x, int y) { return x * CHESSBOARD_SIZE + y; }
+
   Chessboard chessboard_;
-  std::vector<std::unique_ptr<MCTSNode>> childs_;
+  std::unique_ptr<MCTSNode> childs_[CHESSBOARD_SIZE * CHESSBOARD_SIZE];
   const PolicyCallback &policy_;
   bool terminated_;
-  std::vector<double> p_;
+  double p_[CHESSBOARD_SIZE * CHESSBOARD_SIZE];
   double v_;
 
   double sigma_v_;
