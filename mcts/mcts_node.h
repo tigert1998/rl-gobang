@@ -23,6 +23,8 @@ class MCTSNode {
 
   inline double q() const { return sigma_v_ / n_; }
 
+  inline int n() const { return n_; }
+
   std::pair<int, int> Select(double cpuct);
 
   inline bool terminated() const { return terminated_; }
@@ -42,7 +44,7 @@ class MCTSNode {
 
   Chessboard chessboard_;
   std::unique_ptr<MCTSNode> childs_[CHESSBOARD_SIZE * CHESSBOARD_SIZE];
-  const PolicyCallback &policy_;
+  PolicyCallback policy_;
   bool terminated_;
   double p_[CHESSBOARD_SIZE * CHESSBOARD_SIZE];
   double v_;

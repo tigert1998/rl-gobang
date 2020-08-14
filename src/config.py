@@ -1,6 +1,6 @@
 # defines the game
-CHESSBOARD_SIZE = 8
-IN_A_ROW = 5
+CHESSBOARD_SIZE = 5
+IN_A_ROW = 4
 
 # defines the network
 NUM_RESIDUAL_BLOCKS = 3

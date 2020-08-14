@@ -36,3 +36,19 @@ int Chessboard::GetWinner() const {
 void Chessboard::SetMemory(char *ptr) {
   std::copy(ptr, ptr + 2 * CHESSBOARD_SIZE * CHESSBOARD_SIZE, data_);
 }
+
+void Chessboard::Debug() {
+  for (int x = 0; x < CHESSBOARD_SIZE; x++) {
+    for (int y = 0; y < CHESSBOARD_SIZE; y++) {
+      char c = '.';
+      if (data_[Index(0, x, y)] > 0) {
+        c = 'x';
+      } else if (data_[Index(1, x, y) > 0]) {
+        c = 'o';
+      }
+      printf("%c ", c);
+    }
+    printf("\n");
+  }
+  fflush(stdout);
+}

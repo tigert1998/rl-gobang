@@ -93,7 +93,6 @@ def _basic_mcts_policy(chessboard):
     for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
         if pi[x, y] > 0:
             choices.append((x, y))
-    logging.info("mcts.q = {}".format(t.root.q()))
     return choices[random.randint(0, len(choices) - 1)]
 
 

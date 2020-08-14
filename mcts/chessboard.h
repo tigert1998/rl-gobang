@@ -17,6 +17,8 @@ class Chessboard {
 
   void SetMemory(char *ptr);
 
+  void Debug();
+
   inline const char *Data() const { return data_; }
 
  private:

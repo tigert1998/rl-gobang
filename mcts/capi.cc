@@ -16,5 +16,9 @@ void MCTS_Search(MCTS* handle, int num_sims) { handle->Search(num_sims); }
 
 void MCTS_StepForward(MCTS* handle, int x, int y) { handle->StepForward(x, y); }
 
+void MCTS_GetPi(MCTS* handle, double temperature, double* out) {
+  handle->GetPi(temperature, out);
+}
+
 void MCTS_delete(MCTS* handle) { delete handle; }
 }

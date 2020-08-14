@@ -14,9 +14,11 @@ class MCTS {
 
   void StepForward(int x, int y);
 
+  void GetPi(double temperature, double* out);
+
  private:
   Chessboard chessboard_;
-  const PolicyCallback& policy_;
+  PolicyCallback policy_;
   std::unique_ptr<MCTSNode> root_;
 
   void Simulate();
