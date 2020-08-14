@@ -2,7 +2,7 @@ import random
 import itertools
 import logging
 import time
-import threading
+import copy
 
 import numpy as np
 import torch
@@ -21,7 +21,12 @@ GPU = torch.device("cuda:0")
 
 class GobangSelfPlayDataset(Dataset):
     def __init__(self, network, num_self_play_threads):
-        self.network = network
+        self.network_replicas = []
+        for i in range(1):
+            new_network = copy.deepcopy(network)
+            new_network.to("cuda:{}".format(i))
+            new_network.eval()
+            self.network_replicas.append(new_network)
         self.records = []
         self._self_play(num_self_play_threads)
         self._augument()
@@ -42,15 +47,12 @@ class GobangSelfPlayDataset(Dataset):
         return CHESSBOARD_SIZE - 1, CHESSBOARD_SIZE - 1
 
     def _self_play(self, num_threads):
-        network_lock = threading.Lock()
-
         def base_policy(chessboard):
-            i = torch.from_numpy(np.expand_dims(
-                chessboard.copy(), axis=0)).to(GPU)
+            idx = random.randint(0, len(self.network_replicas) - 1)
+            i = torch.from_numpy(np.expand_dims(chessboard.copy(), axis=0))\
+                .to("cuda:{}".format(idx))
 
-            network_lock.acquire()
-            x, y = self.network(i)
-            network_lock.release()
+            x, y = self.network_replicas[idx](i)
 
             x = F.softmax(x.view((-1,)), dim=-1).cpu()\
                 .data.numpy().reshape((CHESSBOARD_SIZE, CHESSBOARD_SIZE))
@@ -62,7 +64,6 @@ class GobangSelfPlayDataset(Dataset):
         t = MCTS(0, chessboard, base_policy)
 
         pbar = tqdm(total=CHESSBOARD_SIZE ** 2)
-        self.network.eval()
         i = 0
         while t.root is None or not t.root.terminated:
             with torch.no_grad():
@@ -125,7 +126,7 @@ def train():
         logging.info("starting game #{}".format(game))
 
         start_t = time.time()
-        dataset = GobangSelfPlayDataset(network, 4)
+        dataset = GobangSelfPlayDataset(network, 1)
         logging.info("self-playing takes {:.2f}s".format(
             time.time() - start_t))
 

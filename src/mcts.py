@@ -3,6 +3,7 @@ import threading
 
 import torch
 import numpy as np
+from readerwriterlock import rwlock
 
 from constants import CHESSBOARD_SIZE
 from utils import get_winner
@@ -13,7 +14,7 @@ class MCTSNode:
             self, me, chessboard: np.array,
             network
     ):
-        self.lock = threading.Lock()
+        self.lock = rwlock.RWLockFair()
         self.me = me
         self.chessboard = chessboard
         self.network = network
@@ -58,48 +59,49 @@ class MCTSNode:
         return self.sigma_v * 1.0 / self.n
 
     def backup(self, delta_v):
-        self.lock.acquire()
-        self.n += 1
-        self.sigma_v += delta_v
-        self.lock.release()
+        with self.lock.gen_wlock():
+            self.n += 1
+            self.sigma_v += delta_v
 
     def expand(self, x, y) -> bool:
-        self.lock.acquire()
-        ret = self.childs[x][y] is None
-        if ret:
+        with self.lock.gen_wlock():
+            if self.childs[x][y] is not None:
+                return False
             self.childs[x][y] = MCTSNode(
                 1 - self.me,
                 self._construct_child_chessboard(x, y),
                 self.network
             )
-        self.lock.release()
-        return ret
+            return True
 
     def select(self, cpuct):
-        self.lock.acquire()
+        rlock = self.lock.gen_rlock()
+        rlock.acquire()
+
         ret = None
         highest = -np.inf
 
         for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
             if self.chessboard[:, x, y].sum() > 0:
                 continue
-            child = self.childs[x][y]
             if self.use_p_noise:
                 e = 0.25
                 p = (1 - e) * self.p[x][y] + e * self.p_noise[x][y]
             else:
                 p = self.p[x][y]
-            if child is None:
-                tmp = cpuct * p * (self.n ** 0.5)
-            else:
-                tmp = -self.childs[x][y].q() +\
-                    cpuct * p * (self.n ** 0.5) / (child.n + 1)
+
+            tmp = cpuct * p * (self.n ** 0.5)
+            child = self.childs[x][y]
+            if child is not None:
+                with child.lock.gen_rlock():
+                    if child.n > 0:
+                        tmp = -self.childs[x][y].q() + tmp / (child.n + 1)
 
             if tmp > highest:
                 highest = tmp
                 ret = (x, y)
 
-        self.lock.release()
+        rlock.release()
         return ret
 
 
