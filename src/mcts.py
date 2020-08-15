@@ -27,14 +27,7 @@ class MCTS:
         global callback
         @callback_t
         def callback(chessboard, out_p_ptr, out_v_ptr):
-            chessboard_numpy = np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE))\
-                .astype(np.float32)
-            for who, x, y in itertools.product(range(2), range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
-                idx = (who * CHESSBOARD_SIZE + x) * CHESSBOARD_SIZE + y
-                if int(chessboard[idx]) > 0:
-                    chessboard_numpy[who][x][y] = 1
-
-            p, v = policy(chessboard_numpy)
+            p, v = policy(self._byte_ptr_to_chessboard(chessboard))
 
             p = p.reshape((-1, )).astype(ctypes.c_double)
             ctypes.memmove(
@@ -47,9 +40,21 @@ class MCTS:
         self.lib.MCTS_new.restype = ctypes.c_void_p
         self.lib.MCTS_Search.argtypes = [ctypes.c_void_p, ctypes.c_int]
         self.lib.MCTS_Search.restype = None
-        self.lib.MCTS_GetPi.argtypes = [
-            ctypes.c_void_p, ctypes.c_double, ctypes.POINTER(ctypes.c_double)]
+        self.lib.MCTS_GetPi.argtypes = \
+            [ctypes.c_void_p, ctypes.c_double, ctypes.POINTER(ctypes.c_double)]
         self.lib.MCTS_GetPi.restype = None
+        self.lib.MCTS_terminated.argtypes = [ctypes.c_void_p]
+        self.lib.MCTS_terminated.restype = ctypes.c_bool
+        self.lib.MCTS_chessboard.argtypes = \
+            [ctypes.c_void_p, ctypes.POINTER(ctypes.c_byte)]
+        self.lib.MCTS_chessboard.restype = None
+        self.lib.MCTS_StepForward.argtypes = \
+            [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+        self.lib.MCTS_StepForward.restype = None
+        self.lib.MCTS_v.argtypes = [ctypes.c_void_p]
+        self.lib.MCTS_v.restype = ctypes.c_double
+        self.lib.MCTS_delete.argtypes = [ctypes.c_void_p]
+        self.lib.MCTS_delete.restype = None
 
         self.handle = self.lib.MCTS_new(
             char_arr_t.from_buffer(char_arr_chessboard),
@@ -68,3 +73,33 @@ class MCTS:
         pi = np.array(pi).reshape((CHESSBOARD_SIZE, CHESSBOARD_SIZE))\
             .astype(np.float32)
         return pi
+
+    def step_forward(self, x, y):
+        self.lib.MCTS_StepForward(
+            self.handle, ctypes.c_int(x), ctypes.c_int(y))
+
+    def terminated(self) -> bool:
+        return bool(self.lib.MCTS_terminated(self.handle))
+
+    def chessboard(self) -> np.array:
+        byte_arr = (ctypes.c_byte * (2 * CHESSBOARD_SIZE ** 2))()
+        byte_ptr = ctypes.cast(byte_arr, ctypes.POINTER(ctypes.c_byte))
+        self.lib.MCTS_chessboard(self.handle, byte_ptr)
+        return self._byte_ptr_to_chessboard(byte_ptr)
+
+    def v(self) -> np.float32:
+        return np.float32(self.lib.MCTS_v(self.handle))
+
+    def __del__(self):
+        self.lib.MCTS_delete(self.handle)
+
+    @classmethod
+    def _byte_ptr_to_chessboard(cls, ptr) -> np.array:
+        ret = np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE))\
+                .astype(np.float32)
+        for who, x, y in itertools.product(
+                range(2), range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
+            idx = (who * CHESSBOARD_SIZE + x) * CHESSBOARD_SIZE + y
+            if int(ptr[idx]) > 0:
+                ret[who][x][y] = 1
+        return ret

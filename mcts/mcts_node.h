@@ -13,7 +13,7 @@
 class MCTSNode {
  public:
   using PolicyCallback =
-      std::function<void(const Chessboard &, double *p, double *v)>;
+      std::function<void(Chessboard &, double *p, double *v)>;
 
   MCTSNode(const Chessboard &chessboard, const PolicyCallback &policy);
 

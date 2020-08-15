@@ -4,7 +4,6 @@ import ctypes
 
 
 def _read_config_from_capi():
-    print("_read_config_from_capi")
     lib = ctypes.CDLL('bazel-bin/mcts/libcapi.so')
 
     class Config(ctypes.Structure):

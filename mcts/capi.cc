@@ -3,13 +3,13 @@
 
 extern "C" {
 
-MCTS* MCTS_new(char* chessboard,
-               void (*callback)(const char*, double*, double*)) {
+MCTS* MCTS_new(char* chessboard, void (*callback)(char*, double*, double*)) {
   Chessboard new_chessboard;
   new_chessboard.SetMemory(chessboard);
   return new MCTS(new_chessboard,
-                  [callback](const Chessboard& chessboard, double* p,
-                             double* v) { callback(chessboard.Data(), p, v); });
+                  [callback](Chessboard& chessboard, double* p, double* v) {
+                    callback(chessboard.Data(), p, v);
+                  });
 }
 
 void MCTS_Search(MCTS* handle, int num_sims) { handle->Search(num_sims); }
@@ -20,7 +20,13 @@ void MCTS_GetPi(MCTS* handle, double temperature, double* out) {
   handle->GetPi(temperature, out);
 }
 
+bool MCTS_terminated(MCTS* handle) { return handle->terminated(); }
+
+void MCTS_chessboard(MCTS* handle, char* ptr) { handle->chessboard(ptr); }
+
 void MCTS_delete(MCTS* handle) { delete handle; }
+
+double MCTS_v(MCTS* handle) { return handle->v(); }
 
 struct Config {
   int chessboard_size, in_a_row;

@@ -21,7 +21,7 @@ class Chessboard {
 
   void Debug();
 
-  inline const char *Data() const { return data_; }
+  inline char *Data() { return data_; }
 
  private:
   inline int Index(int c, int x, int y) const {

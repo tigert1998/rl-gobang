@@ -14,7 +14,13 @@ class MCTS {
 
   void StepForward(int x, int y);
 
+  bool terminated();
+
+  void chessboard(char*);
+
   void GetPi(double temperature, double* out);
+
+  double v();
 
  private:
   Chessboard chessboard_;
@@ -22,6 +28,8 @@ class MCTS {
   std::unique_ptr<MCTSNode> root_;
 
   void Simulate();
+
+  void EnsureRoot();
 };
 
 #endif

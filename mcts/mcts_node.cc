@@ -21,15 +21,12 @@ MCTSNode::MCTSNode(const Chessboard &chessboard, const PolicyCallback &policy)
 bool MCTSNode::Expand(int x, int y) {
   if (childs_[Index(x, y)] != nullptr) return false;
 
+  int half = CHESSBOARD_SIZE * CHESSBOARD_SIZE;
   Chessboard new_chessboard;
-  for (int x = 0; x < CHESSBOARD_SIZE; x++)
-    for (int y = 0; y < CHESSBOARD_SIZE; y++) {
-      for (int who : {0, 1})
-        if (chessboard_.At(who, x, y) > 0) {
-          new_chessboard.Set(1 - who, x, y);
-          break;
-        }
-    }
+  std::copy(chessboard_.Data(), chessboard_.Data() + half,
+            new_chessboard.Data() + half);
+  std::copy(chessboard_.Data() + half, chessboard_.Data() + 2 * half,
+            new_chessboard.Data());
   new_chessboard.Set(1, x, y);
 
   childs_[Index(x, y)].reset(new MCTSNode(new_chessboard, policy_));

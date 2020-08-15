@@ -3,13 +3,17 @@
 #include <cmath>
 #include <iostream>
 
+void MCTS::EnsureRoot() {
+  if (root_ == nullptr) {
+    root_.reset(new MCTSNode(chessboard_, policy_));
+  }
+}
+
 MCTS::MCTS(const Chessboard& chessboard, const MCTSNode::PolicyCallback& policy)
     : chessboard_(chessboard), policy_(policy), root_(nullptr) {}
 
 void MCTS::Search(int num_sims) {
-  if (root_ == nullptr) {
-    root_.reset(new MCTSNode(chessboard_, policy_));
-  }
+  EnsureRoot();
 
   for (int i = 0; i < num_sims; i++) {
     Simulate();
@@ -83,4 +87,19 @@ void MCTS::GetPi(double temperature, double* out) {
   } else {
     for (int i = 0; i < CHESSBOARD_SIZE * CHESSBOARD_SIZE; i++) out[i] /= deno;
   }
+}
+
+bool MCTS::terminated() {
+  EnsureRoot();
+  return root_->terminated();
+}
+
+void MCTS::chessboard(char* ptr) {
+  std::copy(chessboard_.Data(),
+            chessboard_.Data() + 2 * CHESSBOARD_SIZE * CHESSBOARD_SIZE, ptr);
+}
+
+double MCTS::v() {
+  EnsureRoot();
+  return root_->v();
 }

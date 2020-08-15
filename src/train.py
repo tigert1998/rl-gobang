@@ -65,23 +65,23 @@ class GobangSelfPlayDataset(Dataset):
 
         pbar = tqdm(total=CHESSBOARD_SIZE ** 2)
         i = 0
-        while t.root is None or not t.root.terminated:
+        while not t.terminated():
             with torch.no_grad():
                 t.search(1000)
 
             p = t.get_pi(1)
             self.records.append({
-                "chessboard": t.root.chessboard,
+                "chessboard": t.chessboard(),
                 "p": p,
                 "v": None
             })
             x, y = self._action_from_pi(p)
-            t = MCTS.from_mcts_node(t.root.childs[x][y])
+            t.step_forward(x, y)
             i += 1
             pbar.update(1)
         pbar.close()
 
-        self.records[-1]["v"] = np.float32(-t.root.v)
+        self.records[-1]["v"] = -t.v()
 
         for i in reversed(range(len(self.records) - 1)):
             self.records[i]["v"] = -self.records[i + 1]["v"]
