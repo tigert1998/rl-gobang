@@ -12,9 +12,9 @@ import torch.nn.functional as F
 from config import \
     CKPT_DIR, CHESSBOARD_SIZE, EVAL_FREQ, \
     EVAL_CPUCT, EVAL_NUM_SIMS
-from resnet import ResNet
+from resnet import load_ckpt
 from mcts import MCTS
-from utils import config_log, action_from_prob
+from gobang_utils import config_log, action_from_prob, mcts_nn_policy_generator
 
 
 def update_best_ckpt_idx(new_best):
@@ -82,36 +82,19 @@ def get_data_loop(record_buffer: RecordBuffer, data_queue: mp.Queue):
         record_buffer.extend(records)
 
 
-def load_ckpt_to_network(ckpt_idx, gpu_id):
-    ckpt = torch.load(
-        os.path.join(CKPT_DIR, "{}".format(ckpt_idx)),
-        map_location=gpu_id
-    )
-    network = ResNet()
-    network.load_state_dict(ckpt)
-    network.to(gpu_id)
-    return network
-
-
 def evaluate_against_best_ckpt(candidate_network, gpu_id) -> bool:
     with open(os.path.join(CKPT_DIR, "best"), "r") as f:
         best_idx = int(f.read())
-    best_network = load_ckpt_to_network(best_idx, gpu_id)
+    best_network = load_ckpt(
+        os.path.join(CKPT_DIR, "{}.pt".format(best_idx)), gpu_id
+    )
     best_network.eval()
     candidate_network.eval()
 
-    def policy_generator(network):
-        def policy(chessboard):
-            i = torch.from_numpy(np.expand_dims(chessboard.copy(), axis=0))\
-                .to(gpu_id)
-            x, y = network(i)
-            x = F.softmax(x.view((-1,)), dim=-1).cpu().data.numpy().reshape(
-                (CHESSBOARD_SIZE, CHESSBOARD_SIZE))
-            y = y.cpu().data.numpy()[0]
-            return x, y
-        return policy
-
-    policies = list(map(policy_generator, [best_network, candidate_network]))
+    policies = list(map(
+        lambda network: mcts_nn_policy_generator(network, gpu_id),
+        [best_network, candidate_network]
+    ))
 
     who = 0
     chessboard = np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE))\
@@ -144,7 +127,11 @@ def train_main(gpu_idx: int, init_ckpt_idx: int, data_queue: mp.Queue):
     get_data_loop_thread.start()
 
     gpu_id = "cuda:{}".format(gpu_idx)
-    network = load_ckpt_to_network(init_ckpt_idx, gpu_id)
+    network = load_ckpt(
+        os.path.join(CKPT_DIR, "{}.pt".format(init_ckpt_idx)),
+        gpu_id
+    )
+    logging.info("ckpt #{} has been loaded".format(init_ckpt_idx))
 
     optimizer = torch.optim.Adam(
         network.parameters(),
@@ -178,7 +165,12 @@ def train_main(gpu_idx: int, init_ckpt_idx: int, data_queue: mp.Queue):
             optimizer.step()
 
         ckpt_idx += dataset.num_games
+        logging.info("ckpt #{} has been trained".format(ckpt_idx))
         if ckpt_idx - last_ckpt_idx > EVAL_FREQ:
             last_ckpt_idx = ckpt_idx
             if evaluate_against_best_ckpt(network, gpu_id):
+                torch.save(
+                    network.state_dict(),
+                    os.path.join(CKPT_DIR, "{}.pt".format(ckpt_idx))
+                )
                 update_best_ckpt_idx(ckpt_idx)

@@ -9,7 +9,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from utils import stone_is_valid, simple_heuristics
+from gobang_utils import \
+    stone_is_valid, simple_heuristics, mcts_nn_policy_generator
 from config import CHESSBOARD_SIZE
 from mcts import MCTS
 from resnet import ResNet
@@ -149,14 +150,9 @@ class NNMCTSAIPlayer(AIPlayer):
         self.network.load_state_dict(ckpt)
         self.network.eval()
 
+        base_policy = mcts_nn_policy_generator(self.network, "cpu")
+
         def policy(chessboard):
-            def base_policy(chessboard):
-                i = torch.from_numpy(np.expand_dims(chessboard.copy(), axis=0))
-                x, y = self.network(i)
-                x = F.softmax(x.view((-1,)), dim=-1).cpu().data.numpy().reshape(
-                    (CHESSBOARD_SIZE, CHESSBOARD_SIZE))
-                y = y.cpu().data.numpy()[0]
-                return x, y
             t = MCTS(0, chessboard, base_policy)
             t.search(1000, 3)
             pi = t.get_pi(0)

@@ -11,8 +11,8 @@ import numpy as np
 from config import \
     CHESSBOARD_SIZE, TRAIN_NUM_SIMS, TRAIN_CPUCT, CKPT_DIR
 from mcts import MCTS
-from utils import action_from_prob, config_log
-from resnet import ResNet
+from gobang_utils import action_from_prob, config_log, mcts_nn_policy_generator
+from resnet import ResNet, load_ckpt
 
 
 def get_temperature(step):
@@ -32,19 +32,12 @@ def get_best_ckpt_idx() -> int:
 
 
 def self_play(gpu_id, network):
-    def base_policy(chessboard):
-        i = torch.from_numpy(np.expand_dims(
-            chessboard.copy(), axis=0)).to(gpu_id)
-        x, y = network(i)
-        x = F.softmax(x.view((-1,)), dim=-1).cpu()\
-            .data.numpy().reshape((CHESSBOARD_SIZE, CHESSBOARD_SIZE))
-        y = y.cpu().data.numpy()[0]
-        return x, y
-
     records = []
-    chessboard = np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE))\
-        .astype(np.float32)
-    t = MCTS(0, chessboard, base_policy)
+    t = MCTS(
+        0,
+        np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)).astype(np.float32),
+        mcts_nn_policy_generator(network, gpu_id)
+    )
     i = 0
     while not t.terminated():
         with torch.no_grad():
@@ -76,13 +69,9 @@ def self_play_main(gpu_idx: int, data_queue: mp.Queue):
         if best_idx != prev_best_idx:
             logging.info("found a new best ckpt index: {}".format(best_idx))
 
-            ckpt = torch.load(
-                os.path.join(CKPT_DIR, "{}.pt".format(best_idx)),
-                map_location=gpu_id
+            network = load_ckpt(
+                os.path.join(CKPT_DIR, "{}.pt".format(best_idx)), gpu_id
             )
-            network = ResNet()
-            network.load_state_dict(ckpt)
-            network.to(gpu_id)
             network.eval()
 
         records = self_play(gpu_id, network)

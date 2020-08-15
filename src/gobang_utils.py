@@ -5,6 +5,8 @@ import random
 from typing import Optional
 
 import numpy as np
+import torch
+import torch.nn.functional as F
 
 from config import CHESSBOARD_SIZE, IN_A_ROW
 
@@ -82,6 +84,18 @@ def action_from_prob(prob):
             return x, y
         tmp -= prob[x][y]
     return CHESSBOARD_SIZE - 1, CHESSBOARD_SIZE - 1
+
+
+def mcts_nn_policy_generator(network, device_id: str):
+    def policy(chessboard):
+        i = torch.from_numpy(np.expand_dims(chessboard.copy(), axis=0))\
+            .to(device_id)
+        x, y = network(i)
+        x = F.softmax(x.view((-1,)), dim=-1).cpu()\
+            .data.numpy().reshape((CHESSBOARD_SIZE, CHESSBOARD_SIZE))
+        y = y.cpu().data.numpy()[0]
+        return x, y
+    return policy
 
 
 def config_log(filename: Optional[str]):

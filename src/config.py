@@ -36,3 +36,7 @@ EVAL_CPUCT = 3
 
 # path
 CKPT_DIR = "ckpts"
+
+# defines the master behaviour
+SELF_PLAY_PROCS = [0, 0]
+TRAIN_GPU_IDX = 1

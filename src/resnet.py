@@ -64,3 +64,14 @@ class ResNet(nn.Module):
             .view(-1, config.CHESSBOARD_SIZE, config.CHESSBOARD_SIZE)
         ret1 = self.value_head(net)[:, 0]
         return (ret0, ret1)
+
+
+def load_ckpt(path: str, device_id: str) -> ResNet:
+    ckpt = torch.load(
+        path,
+        map_location=device_id
+    )
+    network = ResNet()
+    network.load_state_dict(ckpt)
+    network.to(device_id)
+    return network

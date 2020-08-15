@@ -9,7 +9,7 @@ import numpy as np
 from config import CHESSBOARD_SIZE
 from atomic_value import AtomicValue
 from players import *
-from utils import stone_is_valid, get_winner, config_log
+from gobang_utils import stone_is_valid, get_winner, config_log
 
 
 class VisualArena:
