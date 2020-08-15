@@ -38,7 +38,8 @@ class MCTS:
 
         self.lib.MCTS_new.argtypes = [char_arr_t, callback_t]
         self.lib.MCTS_new.restype = ctypes.c_void_p
-        self.lib.MCTS_Search.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self.lib.MCTS_Search.argtypes = \
+            [ctypes.c_void_p, ctypes.c_int, ctypes.c_double]
         self.lib.MCTS_Search.restype = None
         self.lib.MCTS_GetPi.argtypes = \
             [ctypes.c_void_p, ctypes.c_double, ctypes.POINTER(ctypes.c_double)]
@@ -61,8 +62,11 @@ class MCTS:
             callback
         )
 
-    def search(self, num_sims: int):
-        self.lib.MCTS_Search(self.handle, ctypes.c_int(num_sims))
+    def search(self, num_sims: int, cpuct: float):
+        self.lib.MCTS_Search(
+            self.handle, ctypes.c_int(num_sims),
+            ctypes.c_double(cpuct)
+        )
 
     def get_pi(self, temperature):
         pi = (ctypes.c_double * (CHESSBOARD_SIZE ** 2))()

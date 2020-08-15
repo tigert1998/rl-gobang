@@ -12,18 +12,16 @@ void MCTS::EnsureRoot() {
 MCTS::MCTS(const Chessboard& chessboard, const MCTSNode::PolicyCallback& policy)
     : chessboard_(chessboard), policy_(policy), root_(nullptr) {}
 
-void MCTS::Search(int num_sims) {
+void MCTS::Search(int num_sims, double cpuct) {
   EnsureRoot();
 
   for (int i = 0; i < num_sims; i++) {
-    Simulate();
+    Simulate(cpuct);
   }
 }
 
-void MCTS::Simulate() {
+void MCTS::Simulate(double cpuct) {
   auto node = root_.get();
-
-  double cpuct = 3;
 
   bool expanded = false;
 

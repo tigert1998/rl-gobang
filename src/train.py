@@ -1,90 +1,41 @@
-import random
-import itertools
+import multiprocessing as mp
+import threading
+import os
 import logging
-import time
-import copy
+import tempfile
 
 import numpy as np
 import torch
-import torch.optim as optim
-import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
-from tqdm import tqdm
+import torch.nn.functional as F
 
-from mcts import MCTS
+from config import \
+    CKPT_DIR, CHESSBOARD_SIZE, EVAL_FREQ, \
+    EVAL_CPUCT, EVAL_NUM_SIMS
 from resnet import ResNet
-from config import CHESSBOARD_SIZE
-from utils import config_log
+from mcts import MCTS
+from utils import config_log, action_from_prob
 
-GPU = torch.device("cuda:0")
+
+def update_best_ckpt_idx(new_best):
+    logging.info("updating best index to {}".format(new_best))
+    path = tempfile.mktemp()
+    with open(path, "w") as f:
+        f.write(str(new_best))
+    os.rename(path, os.path.join(CKPT_DIR, "best"))
 
 
 class GobangSelfPlayDataset(Dataset):
-    def __init__(self, network):
-        self.network_replicas = []
-        for i in range(1):
-            new_network = copy.deepcopy(network)
-            new_network.to("cuda:{}".format(i))
-            new_network.eval()
-            self.network_replicas.append(new_network)
-        self.records = []
-        self._self_play()
+    def __init__(self, records):
+        self.records = records
+        self.num_games = len(records)
         self._augument()
-        for i in self:
-            i["chessboard"] = i["chessboard"].copy()
-            i["p"] = i["p"].copy()
 
     def __len__(self):
         return len(self.records)
 
-    @classmethod
-    def _action_from_pi(cls, pi):
-        tmp = random.uniform(0, 1)
-        for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
-            if tmp < pi[x][y]:
-                return x, y
-            tmp -= pi[x][y]
-        return CHESSBOARD_SIZE - 1, CHESSBOARD_SIZE - 1
-
-    def _self_play(self):
-        def base_policy(chessboard):
-            idx = random.randint(0, len(self.network_replicas) - 1)
-            i = torch.from_numpy(np.expand_dims(chessboard.copy(), axis=0))\
-                .to("cuda:{}".format(idx))
-
-            x, y = self.network_replicas[idx](i)
-
-            x = F.softmax(x.view((-1,)), dim=-1).cpu()\
-                .data.numpy().reshape((CHESSBOARD_SIZE, CHESSBOARD_SIZE))
-            y = y.cpu().data.numpy()[0]
-            return x, y
-
-        chessboard = np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE))\
-            .astype(np.float32)
-        t = MCTS(0, chessboard, base_policy)
-
-        pbar = tqdm(total=CHESSBOARD_SIZE ** 2)
-        i = 0
-        while not t.terminated():
-            with torch.no_grad():
-                t.search(1000)
-
-            p = t.get_pi(1)
-            self.records.append({
-                "chessboard": t.chessboard(),
-                "p": p,
-                "v": None
-            })
-            x, y = self._action_from_pi(p)
-            t.step_forward(x, y)
-            i += 1
-            pbar.update(1)
-        pbar.close()
-
-        self.records[-1]["v"] = -t.v()
-
-        for i in reversed(range(len(self.records) - 1)):
-            self.records[i]["v"] = -self.records[i + 1]["v"]
+    def __getitem__(self, idx):
+        return self.records[idx]
 
     def _augument(self):
         ret = []
@@ -99,41 +50,118 @@ class GobangSelfPlayDataset(Dataset):
                 rot_idx = option >> 1
                 new_chessboard = np.rot90(new_chessboard, rot_idx, (-2, -1))
                 new_p = np.rot90(new_p, rot_idx, (-2, -1))
-
                 ret.append({"chessboard": new_chessboard, "p": new_p, "v": v})
-
         np.random.shuffle(ret)
         self.records = ret
 
-    def __getitem__(self, idx):
-        return self.records[idx]
+
+class RecordBuffer:
+    def __init__(self):
+        self.records = []
+        self.cv = threading.Condition()
+
+    def extend(self, records):
+        self.cv.acquire()
+        self.records.extend(records)
+        self.cv.notify_all()
+        self.cv.release()
+
+    def get_dataset(self) -> GobangSelfPlayDataset:
+        self.cv.acquire()
+        while len(self.records) == 0:
+            self.cv.wait()
+        records = self.records
+        self.records = []
+        self.cv.release()
+        return GobangSelfPlayDataset(records)
 
 
-def train():
+def get_data_loop(record_buffer: RecordBuffer, data_queue: mp.Queue):
+    while True:
+        records = data_queue.get()
+        record_buffer.extend(records)
+
+
+def load_ckpt_to_network(ckpt_idx, gpu_id):
+    ckpt = torch.load(
+        os.path.join(CKPT_DIR, "{}".format(ckpt_idx)),
+        map_location=gpu_id
+    )
     network = ResNet()
-    network.to(GPU)
+    network.load_state_dict(ckpt)
+    network.to(gpu_id)
+    return network
 
-    optimizer = optim.Adam(
+
+def evaluate_against_best_ckpt(candidate_network, gpu_id) -> bool:
+    with open(os.path.join(CKPT_DIR, "best"), "r") as f:
+        best_idx = int(f.read())
+    best_network = load_ckpt_to_network(best_idx, gpu_id)
+    best_network.eval()
+    candidate_network.eval()
+
+    def policy_generator(network):
+        def policy(chessboard):
+            i = torch.from_numpy(np.expand_dims(chessboard.copy(), axis=0))\
+                .to(gpu_id)
+            x, y = network(i)
+            x = F.softmax(x.view((-1,)), dim=-1).cpu().data.numpy().reshape(
+                (CHESSBOARD_SIZE, CHESSBOARD_SIZE))
+            y = y.cpu().data.numpy()[0]
+            return x, y
+        return policy
+
+    policies = list(map(policy_generator, [best_network, candidate_network]))
+
+    who = 0
+    chessboard = np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE))\
+        .astype(np.float32)
+    while True:
+        t = MCTS(
+            who,
+            chessboard if who == 0 else chessboard[::-1, :, :],
+            policies[who]
+        )
+        if t.terminated():
+            return who == 0
+        t.search(EVAL_NUM_SIMS, EVAL_CPUCT)
+        pi = t.get_pi(0)
+        x, y = action_from_prob(pi)
+        chessboard[who][x][y] = 1
+        who = 1 - who
+
+    return False
+
+
+def train_main(gpu_idx: int, init_ckpt_idx: int, data_queue: mp.Queue):
+    config_log("train-{}.log".format(os.getpid()))
+    record_buffer = RecordBuffer()
+
+    get_data_loop_thread = threading.Thread(
+        target=get_data_loop,
+        args=(record_buffer, data_queue)
+    )
+    get_data_loop_thread.start()
+
+    gpu_id = "cuda:{}".format(gpu_idx)
+    network = load_ckpt_to_network(init_ckpt_idx, gpu_id)
+
+    optimizer = torch.optim.Adam(
         network.parameters(),
         weight_decay=1e-4
     )
 
-    for game in range(500):
-        logging.info("starting game #{}".format(game))
-
-        start_t = time.time()
-        dataset = GobangSelfPlayDataset(network)
-        logging.info("self-playing takes {:.2f}s".format(
-            time.time() - start_t))
-
+    last_ckpt_idx = 0
+    ckpt_idx = init_ckpt_idx
+    while True:
+        dataset = record_buffer.get_dataset()
         data_loader = DataLoader(dataset, batch_size=64, shuffle=True)
 
-        start_t = time.time()
         network.train()
         for batch_idx, batch in enumerate(data_loader):
-            chessboard = batch["chessboard"].to(GPU)
-            p = batch["p"].to(GPU)
-            v = batch["v"].to(GPU)
+            chessboard = batch["chessboard"].to(gpu_id)
+            p = batch["p"].to(gpu_id)
+            v = batch["v"].to(gpu_id)
             logging.info("batch #{}, size = {}".format(batch_idx, v.size(0)))
 
             optimizer.zero_grad()
@@ -148,13 +176,9 @@ def train():
 
             loss.backward()
             optimizer.step()
-        logging.info("training game takes {:.2f}s".format(
-            time.time() - start_t))
 
-        if game % 50 == 0:
-            torch.save(network.state_dict(), "{}.pt".format(game))
-
-
-if __name__ == "__main__":
-    config_log()
-    train()
+        ckpt_idx += dataset.num_games
+        if ckpt_idx - last_ckpt_idx > EVAL_FREQ:
+            last_ckpt_idx = ckpt_idx
+            if evaluate_against_best_ckpt(network, gpu_id):
+                update_best_ckpt_idx(ckpt_idx)

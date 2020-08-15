@@ -1,6 +1,8 @@
 import sys
 import itertools
 import logging
+import random
+from typing import Optional
 
 import numpy as np
 
@@ -73,11 +75,22 @@ def simple_heuristics(chessboard) -> float:
     return 2 * heuristics[0] / deno - 1
 
 
-def config_log():
+def action_from_prob(prob):
+    tmp = random.uniform(0, 1)
+    for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
+        if tmp < prob[x][y]:
+            return x, y
+        tmp -= prob[x][y]
+    return CHESSBOARD_SIZE - 1, CHESSBOARD_SIZE - 1
+
+
+def config_log(filename: Optional[str]):
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
-
-    handler = logging.StreamHandler(sys.stdout)
+    if filename is None:
+        handler = logging.StreamHandler(sys.stdout)
+    else:
+        handler = logging.FileHandler(filename)
     handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter(
         '[%(asctime)s] [%(levelname)s] %(message)s')

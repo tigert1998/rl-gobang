@@ -24,3 +24,15 @@ CHESSBOARD_SIZE, IN_A_ROW = _read_config_from_capi()
 NUM_RESIDUAL_BLOCKS = 3
 NUM_FILTERS = 32
 VALUE_HEAD_HIDDEN_UNITS = 128
+
+# defines the training process
+TRAIN_NUM_SIMS = 1000
+TRAIN_CPUCT = 3
+
+# defines the evaluation process
+EVAL_FREQ = 20
+EVAL_NUM_SIMS = 1000
+EVAL_CPUCT = 3
+
+# path
+CKPT_DIR = "ckpts"

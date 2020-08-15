@@ -10,13 +10,13 @@ class MCTS {
 
   MCTS(const Chessboard& chessboard, const PolicyCallback& policy);
 
-  void Search(int num_sims);
+  void Search(int num_sims, double cpuct);
 
   void StepForward(int x, int y);
 
   bool terminated();
 
-  void chessboard(char*);
+  void chessboard(char* ptr);
 
   void GetPi(double temperature, double* out);
 
@@ -27,7 +27,7 @@ class MCTS {
   PolicyCallback policy_;
   std::unique_ptr<MCTSNode> root_;
 
-  void Simulate();
+  void Simulate(double cpuct);
 
   void EnsureRoot();
 };
