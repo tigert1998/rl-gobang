@@ -21,4 +21,15 @@ void MCTS_GetPi(MCTS* handle, double temperature, double* out) {
 }
 
 void MCTS_delete(MCTS* handle) { delete handle; }
+
+struct Config {
+  int chessboard_size, in_a_row;
+};
+
+Config global_GetConfig() {
+  return {
+      .chessboard_size = CHESSBOARD_SIZE,
+      .in_a_row = IN_A_ROW,
+  };
+}
 }

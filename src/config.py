@@ -1,6 +1,25 @@
+import ctypes
+
 # defines the game
-CHESSBOARD_SIZE = 5
-IN_A_ROW = 4
+
+
+def _read_config_from_capi():
+    print("_read_config_from_capi")
+    lib = ctypes.CDLL('bazel-bin/mcts/libcapi.so')
+
+    class Config(ctypes.Structure):
+        _fields_ = [
+            ('chessboard_size', ctypes.c_int),
+            ('in_a_row', ctypes.c_int),
+        ]
+
+    lib.global_GetConfig.argtypes = []
+    lib.global_GetConfig.restype = Config
+    ret = lib.global_GetConfig()
+    return ret.chessboard_size, ret.in_a_row
+
+
+CHESSBOARD_SIZE, IN_A_ROW = _read_config_from_capi()
 
 # defines the network
 NUM_RESIDUAL_BLOCKS = 3
