@@ -7,7 +7,9 @@
 
 class Chessboard {
  public:
-  inline Chessboard() { std::fill(std::begin(data_), std::end(data_), 0); }
+  inline Chessboard() {
+    std::fill(data_, data_ + 2 * CHESSBOARD_SIZE * CHESSBOARD_SIZE, 0);
+  }
 
   inline void Set(int c, int x, int y) { data_[Index(c, x, y)] = 1; }
 
