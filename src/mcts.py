@@ -1,5 +1,6 @@
 import itertools
 import ctypes
+from typing import Optional
 
 import numpy as np
 
@@ -25,6 +26,7 @@ class MCTS:
         )
 
         global callback
+
         @callback_t
         def callback(chessboard, out_p_ptr, out_v_ptr):
             p, v = policy(self._byte_ptr_to_chessboard(chessboard))
@@ -62,7 +64,9 @@ class MCTS:
             callback
         )
 
-    def search(self, num_sims: int, cpuct: float, alpha: float):
+    def search(self, num_sims: int, cpuct: float, alpha: Optional[float]):
+        if alpha is None:
+            alpha = -1
         self.lib.MCTS_Search(
             self.handle, ctypes.c_int(num_sims),
             ctypes.c_double(cpuct),

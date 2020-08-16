@@ -115,7 +115,7 @@ def evaluate_against_best_ckpt(candidate_network, gpu_id) -> bool:
         )
         if t.terminated():
             return who == 0
-        t.search(EVAL_NUM_SIMS, EVAL_CPUCT, -1)
+        t.search(EVAL_NUM_SIMS, EVAL_CPUCT, None)
         pi = t.get_pi(0)
         x, y = action_from_prob(pi)
         chessboard[who][x][y] = 1

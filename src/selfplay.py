@@ -15,10 +15,6 @@ from gobang_utils import action_from_prob, config_log, mcts_nn_policy_generator
 from resnet import load_ckpt
 
 
-def get_temperature(step):
-    return max(0, 1 - step / 20.0)
-
-
 def get_best_ckpt_idx() -> int:
     while True:
         try:
@@ -36,10 +32,17 @@ def self_play(gpu_id, network):
         np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)).astype(np.float32),
         mcts_nn_policy_generator(network, gpu_id)
     )
+
+    def get_temperature(i): return float(i < 8)
+    def get_alpha(i): return TRAIN_ALPHA if i >= 8 else None
+
     i = 0
     while not t.terminated():
         with torch.no_grad():
-            t.search(TRAIN_NUM_SIMS, TRAIN_CPUCT, TRAIN_ALPHA)
+            t.search(
+                TRAIN_NUM_SIMS, TRAIN_CPUCT,
+                get_alpha(i)
+            )
         p = t.get_pi(get_temperature(i))
         records.append({
             "chessboard": t.chessboard(),

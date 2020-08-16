@@ -5,3 +5,5 @@ bazel-bin
 bazel-out
 bazel-rl-gobang
 bazel-testlogs
+ckpts
+*.log
