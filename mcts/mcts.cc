@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <random>
 
 void MCTS::EnsureRoot() {
   if (root_ == nullptr) {
@@ -12,8 +13,13 @@ void MCTS::EnsureRoot() {
 MCTS::MCTS(const Chessboard& chessboard, const MCTSNode::PolicyCallback& policy)
     : chessboard_(chessboard), policy_(policy), root_(nullptr) {}
 
-void MCTS::Search(int num_sims, double cpuct) {
+void MCTS::Search(int num_sims, double cpuct, double dirichlet_alpha) {
   EnsureRoot();
+
+  if (dirichlet_alpha > 0) {
+    AllocateNoise(dirichlet_alpha);
+    root_->set_p_noise(p_noise_);
+  }
 
   for (int i = 0; i < num_sims; i++) {
     Simulate(cpuct);
@@ -100,4 +106,19 @@ void MCTS::chessboard(char* ptr) {
 double MCTS::v() {
   EnsureRoot();
   return root_->v();
+}
+
+void MCTS::AllocateNoise(double alpha) {
+  std::gamma_distribution<double> gamma(alpha, 1);
+  std::default_random_engine rng(std::time(nullptr));
+
+  double deno = 0;
+
+  for (int i = 0; i < CHESSBOARD_SIZE * CHESSBOARD_SIZE; i++) {
+    p_noise_[i] = gamma(rng);
+    deno += p_noise_[i];
+  }
+  for (int i = 0; i < CHESSBOARD_SIZE * CHESSBOARD_SIZE; i++) {
+    p_noise_[i] /= deno;
+  }
 }

@@ -25,9 +25,10 @@ NUM_RESIDUAL_BLOCKS = 3
 NUM_FILTERS = 32
 VALUE_HEAD_HIDDEN_UNITS = 128
 
-# defines the training process
+# defines the self playing process
 TRAIN_NUM_SIMS = 1000
 TRAIN_CPUCT = 3
+TRAIN_ALPHA = 0.03
 
 # defines the evaluation process
 EVAL_FREQ = 20

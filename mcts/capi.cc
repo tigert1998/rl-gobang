@@ -12,8 +12,9 @@ MCTS* MCTS_new(char* chessboard, void (*callback)(char*, double*, double*)) {
                   });
 }
 
-void MCTS_Search(MCTS* handle, int num_sims, double cpuct) {
-  handle->Search(num_sims, cpuct);
+void MCTS_Search(MCTS* handle, int num_sims, double cpuct,
+                 double dirichlet_alpha) {
+  handle->Search(num_sims, cpuct, dirichlet_alpha);
 }
 
 void MCTS_StepForward(MCTS* handle, int x, int y) { handle->StepForward(x, y); }

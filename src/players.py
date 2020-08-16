@@ -88,7 +88,7 @@ def _basic_mcts_policy(chessboard):
         value = 0
         return policy, value
     t = MCTS(0, chessboard, base_policy)
-    t.search(1600, 3)
+    t.search(1600, 3, -1)
     pi = t.get_pi(0)
     choices = []
     for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
@@ -131,7 +131,7 @@ def _greedy_mcts_policy(chessboard):
         value = simple_heuristics(chessboard)
         return policy, value
     t = MCTS(0, chessboard, base_policy)
-    t.search(800, 3)
+    t.search(800, 3, -1)
     pi = t.get_pi(0)
     choices = []
     for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
@@ -154,7 +154,7 @@ class NNMCTSAIPlayer(AIPlayer):
 
         def policy(chessboard):
             t = MCTS(0, chessboard, base_policy)
-            t.search(1000, 3)
+            t.search(1000, 3, -1)
             pi = t.get_pi(0)
             choices = []
             for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):

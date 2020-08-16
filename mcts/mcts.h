@@ -10,7 +10,7 @@ class MCTS {
 
   MCTS(const Chessboard& chessboard, const PolicyCallback& policy);
 
-  void Search(int num_sims, double cpuct);
+  void Search(int num_sims, double cpuct, double dirichlet_alpha);
 
   void StepForward(int x, int y);
 
@@ -25,11 +25,14 @@ class MCTS {
  private:
   Chessboard chessboard_;
   PolicyCallback policy_;
+  double p_noise_[CHESSBOARD_SIZE * CHESSBOARD_SIZE];
   std::unique_ptr<MCTSNode> root_;
 
   void Simulate(double cpuct);
 
   void EnsureRoot();
+
+  void AllocateNoise(double alpha);
 };
 
 #endif

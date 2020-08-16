@@ -42,14 +42,24 @@ std::pair<int, int> MCTSNode::Select(double cpuct) {
   std::pair<int, int> ans;
   double highest = -1e10;
 
+  bool use_p_noise = p_noise_ != nullptr;
+
   for (int x = 0; x < CHESSBOARD_SIZE; x++)
     for (int y = 0; y < CHESSBOARD_SIZE; y++) {
       if (chessboard_.At(0, x, y) + chessboard_.At(1, x, y) > 0) {
         continue;
       }
-      double p = p_[Index(x, y)];
+      int idx = Index(x, y);
+      double p;
+      if (use_p_noise) {
+        const double e = 0.25;
+        p = (1 - e) * p_[idx] + e * p_noise_[idx];
+      } else {
+        p = p_[idx];
+      }
+
       double tmp = cpuct * p * std::pow(n_, 0.5);
-      auto child = childs_[Index(x, y)].get();
+      auto child = childs_[idx].get();
       if (child != nullptr && child->n_ > 0) {
         tmp = -child->q() + tmp / (child->n_ + 1);
       }

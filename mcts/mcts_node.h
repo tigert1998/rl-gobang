@@ -37,6 +37,8 @@ class MCTSNode {
 
   inline double v() const { return v_; }
 
+  inline void set_p_noise(double *p_noise) { p_noise_ = p_noise; }
+
   Chessboard chessboard() const { return chessboard_; }
 
  private:
@@ -46,6 +48,8 @@ class MCTSNode {
   std::unique_ptr<MCTSNode> childs_[CHESSBOARD_SIZE * CHESSBOARD_SIZE];
   PolicyCallback policy_;
   bool terminated_;
+
+  double *p_noise_ = nullptr;
   double p_[CHESSBOARD_SIZE * CHESSBOARD_SIZE];
   double v_;
 
