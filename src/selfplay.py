@@ -58,7 +58,13 @@ def self_play(gpu_id, network):
     return records
 
 
-def self_play_main(gpu_idx: int, data_queue: mp.Queue):
+def self_play_main(gpu_idx: int, data_queue: mp.Queue, pid: mp.Value):
+    # double fork
+    fork_pid = os.fork()
+    if fork_pid != 0:
+        pid.value = fork_pid
+        return
+
     config_log("selfplay-{}.log".format(os.getpid()))
     gpu_id = "cuda:{}".format(gpu_idx)
 

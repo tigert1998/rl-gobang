@@ -3,6 +3,7 @@ import threading
 import os
 import logging
 import tempfile
+import shutil
 
 import numpy as np
 import torch
@@ -22,14 +23,17 @@ def update_best_ckpt_idx(new_best):
     path = tempfile.mktemp()
     with open(path, "w") as f:
         f.write(str(new_best))
-    os.rename(path, os.path.join(CKPT_DIR, "best"))
+    shutil.move(path, os.path.join(CKPT_DIR, "best"))
 
 
 class GobangSelfPlayDataset(Dataset):
-    def __init__(self, records):
+    def __init__(self, records, num_games):
         self.records = records
-        self.num_games = len(records)
+        self.num_games = num_games
         self._augument()
+        for record in self.records:
+            for name in ["chessboard", "p"]:
+                record[name] = record[name].copy()
 
     def __len__(self):
         return len(self.records)
@@ -58,11 +62,13 @@ class GobangSelfPlayDataset(Dataset):
 class RecordBuffer:
     def __init__(self):
         self.records = []
+        self.num_games = 0
         self.cv = threading.Condition()
 
     def extend(self, records):
         self.cv.acquire()
         self.records.extend(records)
+        self.num_games += 1
         self.cv.notify_all()
         self.cv.release()
 
@@ -71,9 +77,11 @@ class RecordBuffer:
         while len(self.records) == 0:
             self.cv.wait()
         records = self.records
+        num_games = self.num_games
         self.records = []
+        self.num_games = 0
         self.cv.release()
-        return GobangSelfPlayDataset(records)
+        return GobangSelfPlayDataset(records, num_games)
 
 
 def get_data_loop(record_buffer: RecordBuffer, data_queue: mp.Queue):
@@ -116,7 +124,13 @@ def evaluate_against_best_ckpt(candidate_network, gpu_id) -> bool:
     return False
 
 
-def train_main(gpu_idx: int, init_ckpt_idx: int, data_queue: mp.Queue):
+def train_main(gpu_idx: int, init_ckpt_idx: int, data_queue: mp.Queue, pid: mp.Value):
+    # double fork
+    fork_pid = os.fork()
+    if fork_pid != 0:
+        pid.value = fork_pid
+        return
+
     config_log("train-{}.log".format(os.getpid()))
     record_buffer = RecordBuffer()
 
@@ -168,6 +182,8 @@ def train_main(gpu_idx: int, init_ckpt_idx: int, data_queue: mp.Queue):
         logging.info("ckpt #{} has been trained".format(ckpt_idx))
         if ckpt_idx - last_ckpt_idx > EVAL_FREQ:
             last_ckpt_idx = ckpt_idx
+            logging.info(
+                "evaluating ckpt #{} against best ckpt".format(ckpt_idx))
             if evaluate_against_best_ckpt(network, gpu_id):
                 torch.save(
                     network.state_dict(),

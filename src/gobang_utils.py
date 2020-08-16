@@ -107,6 +107,6 @@ def config_log(filename: Optional[str]):
         handler = logging.FileHandler(filename)
     handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter(
-        '[%(asctime)s] [%(levelname)s] %(message)s')
+        '[%(asctime)s] [%(filename)s:%(lineno)s] [%(levelname)s] %(message)s')
     handler.setFormatter(formatter)
-    root.addHandler(handler)
+    root.handlers = [handler]

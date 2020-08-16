@@ -2,6 +2,7 @@ import os
 import logging
 import glob
 import multiprocessing as mp
+import subprocess
 import json
 import signal
 import argparse
@@ -54,24 +55,28 @@ def start():
     with open(_best_ckpt_idx_file(), "r") as f:
         best_idx = int(f.read())
 
+    pids = []
     self_play_procs = []
     data_queue = mp.Queue(1 << 9)
     for gpu_idx in SELF_PLAY_GPU_IDXS:
+        pids.append(mp.Value('i', 0))
         self_play_procs.append(mp.Process(
             target=self_play_main,
-            args=(gpu_idx, data_queue)
+            args=(gpu_idx, data_queue, pids[-1])
         ))
         self_play_procs[-1].start()
+        self_play_procs[-1].join()
 
+    pids.append(mp.Value('i', 0))
     train_proc = mp.Process(
         target=train_main,
-        args=(TRAIN_GPU_IDX, best_idx, data_queue)
+        args=(TRAIN_GPU_IDX, best_idx, data_queue, pids[-1])
     )
     train_proc.start()
+    train_proc.join()
 
-    pids = [train_proc.pid]
-    for proc in self_play_procs:
-        pids.append(proc.pid)
+    for i in range(len(pids)):
+        pids[i] = pids[i].value
 
     with open(_master_hidden_file(), "w") as f:
         json.dump(pids, f)
@@ -90,6 +95,7 @@ def kill():
     logging.info("killing background processes")
     for pid in pids:
         os.kill(pid, signal.SIGKILL)
+    os.remove(_master_hidden_file())
 
 
 if __name__ == "__main__":
