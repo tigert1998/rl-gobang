@@ -3,6 +3,7 @@
 #include <cmath>
 #include <iostream>
 #include <random>
+#include <ctime>
 
 void MCTS::EnsureRoot() {
   if (root_ == nullptr) {

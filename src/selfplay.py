@@ -16,10 +16,7 @@ from resnet import load_ckpt
 
 
 def get_temperature(step):
-    STEP = 20
-    if step >= STEP:
-        return 0
-    return 1.0 - step * 1.0 / STEP
+    return max(0, 1 - step / 20.0)
 
 
 def get_best_ckpt_idx() -> int:
