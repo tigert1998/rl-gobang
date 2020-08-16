@@ -49,7 +49,7 @@ class VisualArena:
                     break
                 x, y = choice
                 if not stone_is_valid(chessboard, x, y):
-                    msg = "Invalid stone placed by {} player at ({}, {})".format(
+                    msg = "invalid stone placed by {} player at ({}, {})".format(
                         self.INFO[who][0], x, y)
                     logging.error(msg)
                     break
@@ -60,7 +60,7 @@ class VisualArena:
                     logging.info("{} player wins!".format(self.INFO[who][0]))
                     break
                 elif winner == -2:
-                    logging.info("The game ends in a draw.")
+                    logging.info("the game ends in a draw.")
                     break
                 who = 1 - who
             logging.info("chessboard = {}".format(chessboard))

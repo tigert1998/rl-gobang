@@ -12,7 +12,7 @@ from config import \
     CHESSBOARD_SIZE, TRAIN_NUM_SIMS, TRAIN_CPUCT, CKPT_DIR
 from mcts import MCTS
 from gobang_utils import action_from_prob, config_log, mcts_nn_policy_generator
-from resnet import ResNet, load_ckpt
+from resnet import load_ckpt
 
 
 def get_temperature(step):

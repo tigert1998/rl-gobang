@@ -2,48 +2,61 @@ import os
 import logging
 import glob
 import multiprocessing as mp
+import json
+import signal
+import argparse
 
 import torch
 
-from config import SELF_PLAY_PROCS, CKPT_DIR, TRAIN_GPU_IDX
+from config import SELF_PLAY_GPU_IDXS, CKPT_DIR, TRAIN_GPU_IDX
 from gobang_utils import config_log
 from train import update_best_ckpt_idx, train_main
 from resnet import ResNet
 from selfplay import self_play_main
 
 
-if __name__ == "__main__":
-    config_log(None)
+def _master_hidden_file():
+    return os.path.join(CKPT_DIR, ".master")
+
+
+def _best_ckpt_idx_file():
+    return os.path.join(CKPT_DIR, "best")
+
+
+def start():
+    if os.path.isfile(_master_hidden_file()):
+        logging.warning('run "kill" first to terminate background training')
+        return
+
     if not os.path.isdir(CKPT_DIR):
         logging.info("mkdir {}".format(CKPT_DIR))
         os.mkdir(CKPT_DIR)
 
-    if not os.path.isfile(os.path.join(CKPT_DIR, "best")):
+    if not os.path.isfile(_best_ckpt_idx_file()):
         logging.info("best index not found")
 
-        suffix = "pt"
-        ckpts = glob.glob("{}/*.{}".format(CKPT_DIR, suffix))
+        ckpts = glob.glob("{}/*.pt".format(CKPT_DIR))
         ckpts = list(map(
-            lambda p: int(os.path.basename(p)[:-(1 + len(suffix))]),
+            lambda p: int(os.path.splitext(os.path.basename(p))[0]),
             ckpts
         ))
         ckpts.sort()
         if len(ckpts) == 0:
-            logging.info("no ckpt available")
+            logging.info("no ckpt available in the ckpt directory")
             network = ResNet()
             torch.save(network.state_dict(), os.path.join(CKPT_DIR, "0.pt"))
-            logging.info("creating 0.pt as default")
+            logging.info("creating 0.pt as the default best ckpt")
             best_idx = 0
         else:
             best_idx = ckpts[-1]
         update_best_ckpt_idx(best_idx)
 
-    with open(os.path.join(CKPT_DIR, "best"), "r") as f:
+    with open(_best_ckpt_idx_file(), "r") as f:
         best_idx = int(f.read())
 
     self_play_procs = []
     data_queue = mp.Queue(1 << 9)
-    for gpu_idx in SELF_PLAY_PROCS:
+    for gpu_idx in SELF_PLAY_GPU_IDXS:
         self_play_procs.append(mp.Process(
             target=self_play_main,
             args=(gpu_idx, data_queue)
@@ -56,4 +69,38 @@ if __name__ == "__main__":
     )
     train_proc.start()
 
+    pids = [train_proc.pid]
+    for proc in self_play_procs:
+        pids.append(proc.pid)
+
+    with open(_master_hidden_file(), "w") as f:
+        json.dump(pids, f)
+
     # self play and training processes become orphans
+
+
+def kill():
+    if not os.path.isfile(_master_hidden_file()):
+        logging.warning("no background training process is found")
+        return
+
+    with open(_master_hidden_file(), "r") as f:
+        pids = json.load(f)
+
+    logging.info("killing background processes")
+    for pid in pids:
+        os.kill(pid, signal.SIGKILL)
+
+
+if __name__ == "__main__":
+    config_log(None)
+    parser = argparse.ArgumentParser(description='master')
+    parser.add_argument(
+        "instruction", help="the instruction to execute",
+        choices=["start", "kill"]
+    )
+    args = parser.parse_args()
+    if args.instruction == "start":
+        start()
+    elif args.instruction == "kill":
+        kill()
