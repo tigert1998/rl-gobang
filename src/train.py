@@ -180,7 +180,7 @@ def train_main(gpu_idx: int, init_ckpt_idx: int, data_queue: mp.Queue, pid: mp.V
 
         ckpt_idx += dataset.num_games
         logging.info("ckpt #{} has been trained".format(ckpt_idx))
-        if ckpt_idx - last_ckpt_idx > EVAL_FREQ:
+        if ckpt_idx - last_ckpt_idx >= EVAL_FREQ:
             last_ckpt_idx = ckpt_idx
             logging.info(
                 "evaluating ckpt #{} against best ckpt".format(ckpt_idx))
@@ -190,3 +190,5 @@ def train_main(gpu_idx: int, init_ckpt_idx: int, data_queue: mp.Queue, pid: mp.V
                     os.path.join(CKPT_DIR, "{}.pt".format(ckpt_idx))
                 )
                 update_best_ckpt_idx(ckpt_idx)
+            else:
+                logging.info("fail to win the best ckpt")
