@@ -9,7 +9,7 @@ import argparse
 
 import torch
 
-from config import SELF_PLAY_GPU_IDXS, CKPT_DIR, TRAIN_GPU_IDX
+from config import SELF_PLAY_DEVICE_IDS, CKPT_DIR, TRAIN_DEVICE_ID
 from gobang_utils import config_log
 from train import update_best_ckpt_idx, train_main
 from resnet import ResNet
@@ -58,11 +58,11 @@ def start():
     pids = []
     self_play_procs = []
     data_queue = mp.Queue(1 << 9)
-    for gpu_idx in SELF_PLAY_GPU_IDXS:
+    for device_id in SELF_PLAY_DEVICE_IDS:
         pids.append(mp.Value('i', 0))
         self_play_procs.append(mp.Process(
             target=self_play_main,
-            args=(gpu_idx, data_queue, pids[-1])
+            args=(device_id, data_queue, pids[-1])
         ))
         self_play_procs[-1].start()
         self_play_procs[-1].join()
@@ -70,7 +70,7 @@ def start():
     pids.append(mp.Value('i', 0))
     train_proc = mp.Process(
         target=train_main,
-        args=(TRAIN_GPU_IDX, best_idx, data_queue, pids[-1])
+        args=(TRAIN_DEVICE_ID, best_idx, data_queue, pids[-1])
     )
     train_proc.start()
     train_proc.join()

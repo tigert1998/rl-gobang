@@ -90,17 +90,17 @@ def get_data_loop(record_buffer: RecordBuffer, data_queue: mp.Queue):
         record_buffer.extend(records)
 
 
-def evaluate_against_best_ckpt(candidate_network, gpu_id) -> bool:
+def evaluate_against_best_ckpt(candidate_network, device_id) -> bool:
     with open(os.path.join(CKPT_DIR, "best"), "r") as f:
         best_idx = int(f.read())
     best_network = load_ckpt(
-        os.path.join(CKPT_DIR, "{}.pt".format(best_idx)), gpu_id
+        os.path.join(CKPT_DIR, "{}.pt".format(best_idx)), device_id
     )
     best_network.eval()
     candidate_network.eval()
 
     policies = list(map(
-        lambda network: mcts_nn_policy_generator(network, gpu_id),
+        lambda network: mcts_nn_policy_generator(network, device_id),
         [best_network, candidate_network]
     ))
 
@@ -124,7 +124,7 @@ def evaluate_against_best_ckpt(candidate_network, gpu_id) -> bool:
     return False
 
 
-def train_main(gpu_idx: int, init_ckpt_idx: int, data_queue: mp.Queue, pid: mp.Value):
+def train_main(device_id: str, init_ckpt_idx: int, data_queue: mp.Queue, pid: mp.Value):
     # double fork
     fork_pid = os.fork()
     if fork_pid != 0:
@@ -140,10 +140,9 @@ def train_main(gpu_idx: int, init_ckpt_idx: int, data_queue: mp.Queue, pid: mp.V
     )
     get_data_loop_thread.start()
 
-    gpu_id = "cuda:{}".format(gpu_idx)
     network = load_ckpt(
         os.path.join(CKPT_DIR, "{}.pt".format(init_ckpt_idx)),
-        gpu_id
+        device_id
     )
     logging.info("ckpt #{} has been loaded".format(init_ckpt_idx))
 
@@ -160,9 +159,9 @@ def train_main(gpu_idx: int, init_ckpt_idx: int, data_queue: mp.Queue, pid: mp.V
 
         network.train()
         for batch_idx, batch in enumerate(data_loader):
-            chessboard = batch["chessboard"].to(gpu_id)
-            p = batch["p"].to(gpu_id)
-            v = batch["v"].to(gpu_id)
+            chessboard = batch["chessboard"].to(device_id)
+            p = batch["p"].to(device_id)
+            v = batch["v"].to(device_id)
             logging.info("batch #{}, size = {}".format(batch_idx, v.size(0)))
 
             optimizer.zero_grad()
@@ -184,7 +183,7 @@ def train_main(gpu_idx: int, init_ckpt_idx: int, data_queue: mp.Queue, pid: mp.V
             last_ckpt_idx = ckpt_idx
             logging.info(
                 "evaluating ckpt #{} against best ckpt".format(ckpt_idx))
-            if evaluate_against_best_ckpt(network, gpu_id):
+            if evaluate_against_best_ckpt(network, device_id):
                 torch.save(
                     network.state_dict(),
                     os.path.join(CKPT_DIR, "{}.pt".format(ckpt_idx))

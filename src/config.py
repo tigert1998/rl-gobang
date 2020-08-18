@@ -39,5 +39,5 @@ EVAL_CPUCT = 3
 CKPT_DIR = "ckpts"
 
 # defines the master behaviour
-SELF_PLAY_GPU_IDXS = [0, 0, 0]
-TRAIN_GPU_IDX = 2
+SELF_PLAY_DEVICE_IDS = ["cpu", "cpu", "cpu"]
+TRAIN_DEVICE_ID = "cuda:2"

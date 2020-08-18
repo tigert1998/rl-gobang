@@ -25,12 +25,12 @@ def get_best_ckpt_idx() -> int:
             time.sleep(0.25)
 
 
-def self_play(gpu_id, network):
+def self_play(device_id, network):
     records = []
     t = MCTS(
         0,
         np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)).astype(np.float32),
-        mcts_nn_policy_generator(network, gpu_id)
+        mcts_nn_policy_generator(network, device_id)
     )
 
     def get_temperature(i): return float(i < 8)
@@ -59,7 +59,7 @@ def self_play(gpu_id, network):
     return records
 
 
-def self_play_main(gpu_idx: int, data_queue: mp.Queue, pid: mp.Value):
+def self_play_main(device_id: str, data_queue: mp.Queue, pid: mp.Value):
     # double fork
     fork_pid = os.fork()
     if fork_pid != 0:
@@ -67,7 +67,6 @@ def self_play_main(gpu_idx: int, data_queue: mp.Queue, pid: mp.Value):
         return
 
     config_log("selfplay-{}.log".format(os.getpid()))
-    gpu_id = "cuda:{}".format(gpu_idx)
 
     network = None
     prev_best_idx = None
@@ -77,11 +76,12 @@ def self_play_main(gpu_idx: int, data_queue: mp.Queue, pid: mp.Value):
             logging.info("found a new best ckpt index: {}".format(best_idx))
 
             network = load_ckpt(
-                os.path.join(CKPT_DIR, "{}.pt".format(best_idx)), gpu_id
+                os.path.join(CKPT_DIR, "{}.pt".format(best_idx)),
+                device_id
             )
             network.eval()
 
-        records = self_play(gpu_id, network)
+        records = self_play(device_id, network)
         logging.info("sending records: len(records) = {}".format(len(records)))
         data_queue.put(records)
         prev_best_idx = best_idx
