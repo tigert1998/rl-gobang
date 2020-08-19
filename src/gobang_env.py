@@ -108,5 +108,5 @@ if __name__ == "__main__":
 
     player_1546 = NNMCTSAIPlayer("/Users/tigertang/Desktop/1546.pt")
     player_1928 = NNMCTSAIPlayer("/Users/tigertang/Desktop/1928.pt")
-    arena = VisualArena([player_1928, HUMAN_PLAYER])
+    arena = VisualArena([player_1928, GREEDY_PLAYER])
     arena.event_loop()

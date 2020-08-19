@@ -9,7 +9,8 @@ import torch.nn.functional as F
 import numpy as np
 
 from config import \
-    CHESSBOARD_SIZE, TRAIN_NUM_SIMS, TRAIN_CPUCT, CKPT_DIR, TRAIN_ALPHA
+    CHESSBOARD_SIZE, CKPT_DIR, SELFPLAY_NUM_SIMS, \
+    SELFPLAY_CPUCT, SELFPLAY_ALPHA, SELFPLAY_MCTS_BATCH
 from mcts import MCTS
 from gobang_utils import action_from_prob, config_log, mcts_nn_policy_generator
 from resnet import load_ckpt
@@ -29,18 +30,18 @@ def self_play(device_id, network):
     records = []
     t = MCTS(
         np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)).astype(np.float32),
-        1, 64,
+        1, SELFPLAY_MCTS_BATCH,
         mcts_nn_policy_generator(network, device_id)
     )
 
     def get_temperature(i): return float(i < 8)
-    def get_alpha(i): return TRAIN_ALPHA if i >= 8 else None
+    def get_alpha(i): return SELFPLAY_ALPHA if i >= 8 else None
 
     i = 0
     while not t.terminated():
         with torch.no_grad():
             t.search(
-                TRAIN_NUM_SIMS, TRAIN_CPUCT,
+                SELFPLAY_NUM_SIMS, SELFPLAY_CPUCT,
                 get_alpha(i)
             )
         p = t.get_pi(get_temperature(i))

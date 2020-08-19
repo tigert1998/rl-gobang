@@ -12,7 +12,7 @@ import torch.nn.functional as F
 
 from config import \
     CKPT_DIR, CHESSBOARD_SIZE, EVAL_FREQ, \
-    EVAL_CPUCT, EVAL_NUM_SIMS
+    EVAL_CPUCT, EVAL_NUM_SIMS, EVAL_MCTS_BATCH
 from resnet import load_ckpt
 from mcts import MCTS
 from gobang_utils import config_log, action_from_prob, mcts_nn_policy_generator
@@ -110,7 +110,7 @@ def evaluate_against_best_ckpt(candidate_network, device_id) -> bool:
     while True:
         t = MCTS(
             chessboard if who == 0 else chessboard[::-1, :, :],
-            1, 64,
+            1, EVAL_MCTS_BATCH,
             policies[who]
         )
         if t.terminated():
