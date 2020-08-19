@@ -3,13 +3,11 @@
 
 extern "C" {
 
-MCTS* MCTS_new(char* chessboard, void (*callback)(char*, double*, double*)) {
+MCTS* MCTS_new(char* chessboard, double vloss, int batch_size,
+               void (*callback)(int, char**, double**, double**)) {
   Chessboard new_chessboard;
   new_chessboard.SetMemory(chessboard);
-  return new MCTS(new_chessboard,
-                  [callback](Chessboard& chessboard, double* p, double* v) {
-                    callback(chessboard.Data(), p, v);
-                  });
+  return new MCTS(new_chessboard, vloss, batch_size, callback);
 }
 
 void MCTS_Search(MCTS* handle, int num_sims, double cpuct,

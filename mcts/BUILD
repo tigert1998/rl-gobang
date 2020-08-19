@@ -10,7 +10,8 @@ cc_library(
         "config.h",
         "chessboard.h",
         "mcts_node.h",
-        "mcts.h"
+        "mcts.h",
+        "static_queue.h"
     ],
     alwayslink=True
 )
