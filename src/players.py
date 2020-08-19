@@ -82,12 +82,13 @@ RANDOM_PLAYER = AIPlayer(_random_policy)
 
 
 def _basic_mcts_policy(chessboard):
-    def base_policy(_):
-        policy = np.ones((CHESSBOARD_SIZE, CHESSBOARD_SIZE)) \
+    def base_policy(chessboard):
+        n = chessboard.shape[0]
+        policy = np.ones((n, CHESSBOARD_SIZE, CHESSBOARD_SIZE)) \
             / CHESSBOARD_SIZE ** 2
-        value = 0
+        value = np.zeros((n,))
         return policy, value
-    t = MCTS(0, chessboard, base_policy)
+    t = MCTS(chessboard, 1, 1, base_policy)
     t.search(1600, 3, None)
     pi = t.get_pi(0)
     choices = []
@@ -126,11 +127,12 @@ GREEDY_PLAYER = AIPlayer(_greedy_policy)
 
 def _greedy_mcts_policy(chessboard):
     def base_policy(chessboard):
-        policy = np.ones((CHESSBOARD_SIZE, CHESSBOARD_SIZE)) \
+        n = chessboard.shape[0]
+        policy = np.ones((n, CHESSBOARD_SIZE, CHESSBOARD_SIZE)) \
             / CHESSBOARD_SIZE ** 2
-        value = simple_heuristics(chessboard)
+        value = np.array([simple_heuristics(chessboard[i]) for i in range(n)])
         return policy, value
-    t = MCTS(0, chessboard, base_policy)
+    t = MCTS(chessboard, 1, 1, base_policy)
     t.search(800, 3, None)
     pi = t.get_pi(0)
     choices = []
@@ -153,7 +155,7 @@ class NNMCTSAIPlayer(AIPlayer):
         base_policy = mcts_nn_policy_generator(self.network, "cpu")
 
         def policy(chessboard):
-            t = MCTS(0, chessboard, base_policy)
+            t = MCTS(chessboard, 1, 1, base_policy)
             t.search(1000, 3, None)
             pi = t.get_pi(0)
             choices = []

@@ -28,8 +28,8 @@ def get_best_ckpt_idx() -> int:
 def self_play(device_id, network):
     records = []
     t = MCTS(
-        0,
         np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)).astype(np.float32),
+        1, 64,
         mcts_nn_policy_generator(network, device_id)
     )
 

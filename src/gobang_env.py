@@ -21,6 +21,7 @@ class VisualArena:
     def __init__(self, players: List[Player]):
         self.players = players
         self.display = pygame.display.set_mode((600, 600))
+        self.history = []
         pygame.display.set_caption('Gobang')
         background_img = pygame.image.load('imgs/chessboard.png')
         self.display.blit(background_img, (0, 0))
@@ -53,6 +54,7 @@ class VisualArena:
                         self.INFO[who][0], x, y)
                     logging.error(msg)
                     break
+                self.history.append((x, y))
                 chessboard[who, x, y] = 1
                 self.place_stone(who, x, y)
                 winner = get_winner(chessboard)
@@ -93,10 +95,18 @@ class VisualArena:
         )
         pygame.display.update()
 
+    def _save_gif(self, path: str):
+        ...
+
+    def save_history_image(self, path: str):
+        if path.endswith(".gif"):
+            self._save_gif(path)
+
 
 if __name__ == "__main__":
     config_log(None)
 
-    player = NNMCTSAIPlayer("/Users/tigertang/Desktop/1546.pt")
-    arena = VisualArena([player, HUMAN_PLAYER])
+    player_1546 = NNMCTSAIPlayer("/Users/tigertang/Desktop/1546.pt")
+    player_1928 = NNMCTSAIPlayer("/Users/tigertang/Desktop/1928.pt")
+    arena = VisualArena([player_1928, HUMAN_PLAYER])
     arena.event_loop()

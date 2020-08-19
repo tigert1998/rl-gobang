@@ -44,6 +44,8 @@ class MCTS {
   void EnsureRoot();
 
   void AllocateNoise(double alpha);
+
+  void CheckVlossCnt(MCTSNode *node);
 };
 
 #endif

@@ -39,5 +39,5 @@ EVAL_CPUCT = 3
 CKPT_DIR = "ckpts"
 
 # defines the master behaviour
-SELF_PLAY_DEVICE_IDS = ["cpu", "cpu", "cpu"]
+SELF_PLAY_DEVICE_IDS = ["cuda:0", "cuda:0", "cuda:0"]
 TRAIN_DEVICE_ID = "cuda:2"

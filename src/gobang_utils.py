@@ -88,12 +88,12 @@ def action_from_prob(prob):
 
 def mcts_nn_policy_generator(network, device_id: str):
     def policy(chessboard):
-        i = torch.from_numpy(np.expand_dims(chessboard.copy(), axis=0))\
-            .to(device_id)
+        i = torch.from_numpy(chessboard.copy()).to(device_id)
+        batch_size = i.size(0)
         x, y = network(i)
-        x = F.softmax(x.view((-1,)), dim=-1).cpu()\
-            .data.numpy().reshape((CHESSBOARD_SIZE, CHESSBOARD_SIZE))
-        y = y.cpu().data.numpy()[0]
+        x = F.softmax(x.view((batch_size, -1)), dim=-1).cpu()\
+            .data.numpy().reshape((-1, CHESSBOARD_SIZE, CHESSBOARD_SIZE))
+        y = y.cpu().data.numpy()
         return x, y
     return policy
 

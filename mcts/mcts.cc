@@ -1,5 +1,6 @@
 #include "mcts.h"
 
+#include <cassert>
 #include <cmath>
 #include <ctime>
 #include <iostream>
@@ -8,6 +9,11 @@
 void MCTS::EnsureRoot() {
   if (root_ == nullptr) {
     root_.reset(new MCTSNode(chessboard_, nullptr));
+    if (root_->evaluating()) {
+      root_->inc_vloss_cnt();
+      task_queue_.PushBack(root_.get());
+      DispatchBatchInference();
+    }
   }
 }
 
@@ -30,6 +36,9 @@ void MCTS::Search(int num_sims, double cpuct, double dirichlet_alpha) {
   for (int i = 0; i < num_sims; i++) {
     Simulate(cpuct);
   }
+
+  DispatchBatchInference();
+  CheckVlossCnt(root_.get());
 }
 
 void MCTS::Simulate(double cpuct) {
@@ -39,22 +48,26 @@ void MCTS::Simulate(double cpuct) {
   node->inc_vloss_cnt();
 
   for (;;) {
-    auto xy = node->Select(cpuct, vloss_);
-    expanded = node->Expand(xy.first, xy.second);
-    node = node->child(xy.first, xy.second);
-    node->inc_vloss_cnt();
-
     if (node->terminated()) {
       BackupFromLeaf(node);
       break;
     } else if (node->evaluating() && expanded) {
       // expand a new node
+      if (task_queue_.Size() >= batch_size_) {
+        DispatchBatchInference();
+      }
       task_queue_.PushBack(node);
       break;
     } else if (node->evaluating() && !expanded) {
       // previous evaluating node
       DispatchBatchInference();
+      assert(!node->evaluating());
     }
+
+    auto xy = node->Select(cpuct, vloss_);
+    expanded = node->Expand(xy.first, xy.second);
+    node = node->child(xy.first, xy.second);
+    node->inc_vloss_cnt();
   }
 }
 
@@ -140,18 +153,17 @@ void MCTS::DispatchBatchInference() {
   thread_local double* vs_buf[LEN];
 
   for (int batch_id = 0;
-       batch_id <
-       (task_queue_.rear() - task_queue_.front() + batch_size_) / batch_size_;
+       batch_id < (task_queue_.Size() + batch_size_ - 1) / batch_size_;
        batch_id++) {
     int from = batch_id * batch_size_ + task_queue_.front();
     int to = std::min(from + batch_size_ - 1, task_queue_.rear());
     int n = to - from + 1;
 
-    for (int i = from; i <= to; i++) {
-      auto node = task_queue_[i];
-      chessboards_buf[i - from] = node->chessboard_.Data();
-      probs_buf[i - from] = node->p_;
-      vs_buf[i - from] = &node->v_;
+    for (int i = 0; i < n; i++) {
+      auto node = task_queue_[i + from];
+      chessboards_buf[i] = node->chessboard_.Data();
+      probs_buf[i] = node->p_;
+      vs_buf[i] = &node->v_;
     }
     policy_(n, chessboards_buf, probs_buf, vs_buf);
   }
@@ -170,5 +182,19 @@ void MCTS::BackupFromLeaf(MCTSNode* node) {
 
     node = node->father();
     delta_v = -delta_v;
+  }
+}
+
+void MCTS::CheckVlossCnt(MCTSNode* node) {
+  if (node->vloss_cnt_ != 0) {
+    puts("node->vloss_cnt_ != 0");
+    exit(1);
+  }
+  for (int i = 0; i < CHESSBOARD_SIZE * CHESSBOARD_SIZE; i++) {
+    auto new_node = node->childs_[i].get();
+    if (new_node == nullptr) {
+      continue;
+    }
+    CheckVlossCnt(new_node);
   }
 }

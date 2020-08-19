@@ -109,8 +109,8 @@ def evaluate_against_best_ckpt(candidate_network, device_id) -> bool:
         .astype(np.float32)
     while True:
         t = MCTS(
-            who,
             chessboard if who == 0 else chessboard[::-1, :, :],
+            1, 64,
             policies[who]
         )
         if t.terminated():

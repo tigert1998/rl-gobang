@@ -15,6 +15,7 @@ class StaticQueue {
 
   int front() const { return front_; }
   int rear() const { return rear_; }
+  int Size() const { return rear_ - front_ + 1; }
 
   T &operator[](int i) { return arr_[i]; }
 
