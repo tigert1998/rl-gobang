@@ -10,6 +10,7 @@ from config import CHESSBOARD_SIZE
 from atomic_value import AtomicValue
 from players import *
 from gobang_utils import stone_is_valid, get_winner, config_log
+from gobang_vis import save_history_img
 
 
 class VisualArena:
@@ -54,7 +55,7 @@ class VisualArena:
                         self.INFO[who][0], x, y)
                     logging.error(msg)
                     break
-                self.history.append((x, y))
+                self.history.append((who, x, y))
                 chessboard[who, x, y] = 1
                 self.place_stone(who, x, y)
                 winner = get_winner(chessboard)
@@ -95,18 +96,12 @@ class VisualArena:
         )
         pygame.display.update()
 
-    def _save_gif(self, path: str):
-        ...
-
-    def save_history_image(self, path: str):
-        if path.endswith(".gif"):
-            self._save_gif(path)
-
 
 if __name__ == "__main__":
     config_log(None)
 
-    player_1546 = NNMCTSAIPlayer("/Users/tigertang/Desktop/1546.pt")
-    player_1928 = NNMCTSAIPlayer("/Users/tigertang/Desktop/1928.pt")
-    arena = VisualArena([player_1928, GREEDY_PLAYER])
+    player = NNMCTSAIPlayer("/Users/tigertang/Desktop/9729.pt")
+    arena = VisualArena([player, HUMAN_PLAYER])
     arena.event_loop()
+
+    save_history_img(arena.history, "play.gif")

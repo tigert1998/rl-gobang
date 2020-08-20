@@ -64,8 +64,9 @@ std::pair<int, int> MCTSNode::Select(double cpuct, double vloss) {
       double tmp = cpuct * p * std::pow(n_, 0.5);
       auto child = childs_[idx].get();
       if (child != nullptr) {
-        tmp = -vloss * child->vloss_cnt_ / std::max(child->n_, 1) - child->q() +
-              tmp / (child->n_ + 1);
+        double q = (-vloss * child->vloss_cnt_ - child->sigma_v_) /
+                   std::max(child->n_ + child->vloss_cnt_, 1);
+        tmp = q + tmp / (child->n_ + 1);
       }
 
       if (tmp > highest) {
