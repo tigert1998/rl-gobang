@@ -81,6 +81,11 @@ class OnlinePlatform:
 
 
 class TencentHappyGomoku(OnlinePlatform):
+    """TencentHappyGomoku
+    The class is used to automatically play at "欢乐五子棋腾讯版小程序".
+    Now it is only tested under MI 8 SE.
+    """
+
     def _chess_coordiante_at(self, x, y):
         left = 42
         top = 617
@@ -92,7 +97,7 @@ class TencentHappyGomoku(OnlinePlatform):
         screen_x, screen_y = self._chess_coordiante_at(x, y)
         cmd = "input tap {} {}".format(screen_x, screen_y)
         self._shell(cmd)
-        time.sleep(0.3 + random.random() * 0.2)
+        time.sleep(0.1 + random.random() * 0.1)
         self._shell(cmd)
 
     def _detect_chessboard(self, img_path: str) -> Tuple[int, np.array]:
@@ -136,10 +141,11 @@ class TencentHappyGomoku(OnlinePlatform):
 if __name__ == "__main__":
     config_log(None)
     platform = TencentHappyGomoku(None)
-    player = NNMCTSAIPlayer("/Users/tigertang/Desktop/14990.pt")
+    player = NNMCTSAIPlayer("/Users/tigertang/Desktop/22143.pt")
 
     while True:
         who, chessboard = platform.wait_on_chessboard()
         logging.info("\n" + chessboard_str(chessboard))
         x, y = player.evaluate(who, chessboard)
+        logging.info("the agent is placing stone at ({}, {})".format(x, y))
         platform.place_stone(x, y)
