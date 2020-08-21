@@ -53,11 +53,11 @@ class OnlinePlatform:
             ret = 1
             while ret != 0:
                 ret = self._shell("screencap -p /sdcard/tmp/screenshot.png")
-                time.sleep(0.25)
+                time.sleep(0.1)
             ret = 1
             while ret != 0:
                 ret = self._pull("/sdcard/tmp/screenshot.png")
-                time.sleep(0.25)
+                time.sleep(0.1)
 
             who, chessboard = self._detect_chessboard("tmp/screenshot.png")
             if who == 0:

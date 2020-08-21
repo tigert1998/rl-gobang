@@ -7,3 +7,4 @@ bazel-rl-gobang
 bazel-testlogs
 ckpts
 *.log
+tmp
