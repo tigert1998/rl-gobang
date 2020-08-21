@@ -3,6 +3,8 @@ import copy
 
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 
+from gobang_utils import CHESSBOARD_SIZE
+
 
 def save_history_img(history: List[Tuple[int, int, int]], path: str):
     assert path.endswith(".jpeg") or path.endswith(".gif")
@@ -43,3 +45,17 @@ def save_history_img(history: List[Tuple[int, int, int]], path: str):
             append_images=all_imgs[1:],
             duration=1000, loop=0
         )
+
+
+def chessboard_str(chessboard) -> str:
+    s = ""
+    for i in range(CHESSBOARD_SIZE):
+        for j in range(CHESSBOARD_SIZE):
+            if chessboard[0, i, j] > 0:
+                s += "x "
+            elif chessboard[1, i, j] > 0:
+                s += "o "
+            else:
+                s += ". "
+        s += "\n"
+    return s

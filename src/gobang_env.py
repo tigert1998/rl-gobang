@@ -100,7 +100,7 @@ class VisualArena:
 if __name__ == "__main__":
     config_log(None)
 
-    player = NNMCTSAIPlayer("/Users/tigertang/Desktop/9729.pt")
+    player = NNMCTSAIPlayer("/Users/tigertang/Desktop/14990.pt")
     arena = VisualArena([player, HUMAN_PLAYER])
     arena.event_loop()
 

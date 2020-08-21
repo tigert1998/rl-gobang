@@ -155,7 +155,7 @@ class NNMCTSAIPlayer(AIPlayer):
         base_policy = mcts_nn_policy_generator(self.network, "cpu")
 
         def policy(chessboard):
-            t = MCTS(chessboard, 1, 1, base_policy)
+            t = MCTS(chessboard, 1, 16, base_policy)
             t.search(1000, 3, None)
             pi = t.get_pi(0)
             choices = []

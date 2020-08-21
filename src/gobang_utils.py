@@ -100,12 +100,12 @@ def mcts_nn_policy_generator(network, device_id: str):
 
 def config_log(filename: Optional[str]):
     root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
+    root.setLevel(logging.INFO)
     if filename is None:
         handler = logging.StreamHandler(sys.stdout)
     else:
         handler = logging.FileHandler(filename)
-    handler.setLevel(logging.DEBUG)
+    handler.setLevel(logging.INFO)
     formatter = logging.Formatter(
         '[%(asctime)s] [%(filename)s:%(lineno)s] [%(levelname)s] %(message)s')
     handler.setFormatter(formatter)
