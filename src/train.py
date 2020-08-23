@@ -12,7 +12,8 @@ import torch.nn.functional as F
 
 from config import \
     CKPT_DIR, CHESSBOARD_SIZE, EVAL_FREQ, \
-    EVAL_CPUCT, EVAL_NUM_SIMS, EVAL_MCTS_BATCH
+    EVAL_CPUCT, EVAL_NUM_SIMS, EVAL_MCTS_BATCH, \
+    TRAIN_LR
 from resnet import load_ckpt
 from mcts import MCTS
 from gobang_utils import config_log, action_from_prob, mcts_nn_policy_generator
@@ -146,8 +147,9 @@ def train_main(device_id: str, init_ckpt_idx: int, data_queue: mp.Queue, pid: mp
     )
     logging.info("ckpt #{} has been loaded".format(init_ckpt_idx))
 
-    optimizer = torch.optim.Adam(
+    optimizer = torch.optim.SGD(
         network.parameters(),
+        lr=TRAIN_LR,
         weight_decay=1e-4
     )
 

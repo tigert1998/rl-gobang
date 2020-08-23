@@ -29,7 +29,7 @@ So it may need additional efforts to deploy the program to Windows systems.
 # start training
 python src/master.py start
 
-# end training
+# stop training
 python src/master.py kill
 ```
 
@@ -44,11 +44,25 @@ python src/gobang_env.py
 
 ## Achievements
 
-- Wins one of the strongest gomoku AI on Android phones, tito, with black stone.
+- Beats tito (an AI who achieved 3 first and 2 second place in Gomocup) with black stone.
 
 ![VS tito with black stone](resources/vs_tito_black.gif)
 
-- Gets high rank at the platform "微信小程序-欢乐五子棋腾讯版" (on progress).
+- Gets high rank at the platform "微信小程序-欢乐五子棋腾讯版" (in progress).
+
+## Performance Notes
+
+The following optimizations are extremely useful in the training process.
+
+1. Removing Python runtime in MCTS search with a native library (C++/Rust)
+brings a speedup of roughly 30.
+
+2. Multi-process can be utilized to accelerate the training procedure by the number
+of self-play processes, which is bottleneck of the whole system.
+
+3. Virtual loss is a critical optimization trick to batch the neural network inference
+during MCTS self-play.
+It can easily speedup self-play by about 6 times.
 
 ## Paper
 

@@ -156,7 +156,7 @@ class NNMCTSAIPlayer(AIPlayer):
 
         def policy(chessboard):
             t = MCTS(chessboard, 1, 16, base_policy)
-            t.search(1000, 3, None)
+            t.search(1600, 3, None)
             pi = t.get_pi(0)
             choices = []
             for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
