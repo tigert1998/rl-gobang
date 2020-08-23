@@ -42,6 +42,10 @@ It also contains functions to save the playing history to images.
 python src/gobang_env.py
 ```
 
+Available checkpoints:
+- [Onedrive](https://1drv.ms/u/s!Ame-g9xGXIZyiFzErExk5rwLp-lS?e=PnsCPh)
+- [BaiduYun](https://pan.baidu.com/s/1hO6Y3Qz35-kSTwX1uk5zzQ) with share code: `qthq`
+
 ## Achievements
 
 - Beats tito (an AI who achieved 3 first and 2 second place in Gomocup) with black stone.

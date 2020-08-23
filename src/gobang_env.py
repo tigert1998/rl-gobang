@@ -100,9 +100,8 @@ class VisualArena:
 if __name__ == "__main__":
     config_log(None)
 
-    player_0 = NNMCTSAIPlayer("/Users/tigertang/Desktop/38610.pt")
-    player_1 = NNMCTSAIPlayer("/Users/tigertang/Desktop/44431.pt")
-    arena = VisualArena([player_1, player_0])
+    player = NNMCTSAIPlayer("./41270.pt")
+    arena = VisualArena([player, HUMAN_PLAYER])
     arena.event_loop()
 
     save_history_img(arena.history, "play.gif")
