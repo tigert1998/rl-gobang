@@ -12,12 +12,14 @@ from gobang_utils import config_log
 from gobang_vis import chessboard_str
 
 
-def get_average_color(img, xy, radius) -> np.array:
+def get_median_color(img, xy, radius) -> np.array:
     img = img.crop(
         (xy[0] - radius, xy[1] - radius,
          xy[0] + radius, xy[1] + radius)
     )
-    return np.average(np.array(img.getdata()), axis=0)
+    arr = np.array(img.getdata())
+    color = np.median(arr, axis=0)[:-1]
+    return color
 
 
 class OnlinePlatform:
@@ -88,7 +90,7 @@ class TencentHappyGomoku(OnlinePlatform):
 
     def _chess_coordiante_at(self, x, y):
         left = 42
-        top = 617
+        top = 696
         grid_height = 930.0 / 14
         margin = 33
         return (y * grid_height + margin + left, x * grid_height + margin + top)
@@ -102,13 +104,13 @@ class TencentHappyGomoku(OnlinePlatform):
 
     def _detect_chessboard(self, img_path: str) -> Tuple[int, np.array]:
         img = Image.open(img_path)
-        chess_radius = 53.0 / 2
+        chess_radius = 57.0 / 2
 
         chessboard = np.zeros((2, 15, 15)).astype(np.float32)
 
         for i in range(15):
             for j in range(15):
-                c = get_average_color(
+                c = get_median_color(
                     img, self._chess_coordiante_at(i, j),
                     chess_radius
                 )
@@ -121,10 +123,10 @@ class TencentHappyGomoku(OnlinePlatform):
                     # white
                     chessboard[1, i, j] = 1
 
-        ROLE_LOCS = [(858, 1780), (228, 339)]
+        ROLE_LOCS = [(858, 1860), (230, 418)]
         roles = [-1] * 2
         for i in range(2):
-            c = get_average_color(img, ROLE_LOCS[i], chess_radius)
+            c = get_median_color(img, ROLE_LOCS[i], chess_radius)
             avg_c = np.average(c) / 255
             if avg_c < 0.65:
                 # black
@@ -141,7 +143,7 @@ class TencentHappyGomoku(OnlinePlatform):
 if __name__ == "__main__":
     config_log(None)
     platform = TencentHappyGomoku(None)
-    player = NNMCTSAIPlayer("/Users/tigertang/Desktop/22143.pt")
+    player = NNMCTSAIPlayer("/Users/tigertang/Projects/rl-gobang/41270.pt")
 
     while True:
         who, chessboard = platform.wait_on_chessboard()
