@@ -82,6 +82,9 @@ class OnlinePlatform:
     def place_stone(self, x, y):
         raise NotImplementedError()
 
+    def restart(self):
+        raise NotImplementedError()
+
 
 class TencentHappyGomoku(OnlinePlatform):
     """TencentHappyGomoku
@@ -140,14 +143,38 @@ class TencentHappyGomoku(OnlinePlatform):
 
         return roles[0], chessboard
 
+    def restart(self):
+        # click leave
+        LEAVE_LOCS = (116, 2072)
+        cmd = "input tap {} {}".format(*LEAVE_LOCS)
+        self._shell(cmd)
+        time.sleep(0.1 + random.random() * 0.1)
+        # click start
+        screen_x, screen_y = self._chess_coordiante_at(7, 7)
+        cmd = "input tap {} {}".format(screen_x, screen_y)
+        self._shell(cmd)
+
 
 if __name__ == "__main__":
     config_log(None)
     platform = TencentHappyGomoku(None)
     player = NNMCTSAIPlayer("/home/fucong/playground/rl-gobang/41270.pt")
 
+    just_restarted = False
     while True:
-        who, chessboard = platform.wait_on_chessboard()
+        try:
+            who, chessboard = platform.wait_on_chessboard()
+        except AssertionError:
+            if just_restarted:
+                logging.info("waiting for the match...")
+            else:
+                logging.info("the game ends")
+                time.sleep(6)
+                logging.info("restarting...")
+                just_restarted = True
+                platform.restart()
+            continue
+        just_restarted = False
         logging.info("\n" + chessboard_str(chessboard))
         x, y = player.evaluate(who, chessboard)
         logging.info("the agent is placing stone at ({}, {})".format(x, y))
