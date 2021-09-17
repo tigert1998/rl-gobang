@@ -11,7 +11,7 @@ import torch.nn.functional as F
 
 from gobang_utils import \
     stone_is_valid, simple_heuristics, mcts_nn_policy_generator
-from config import CHESSBOARD_SIZE
+from config import CHESSBOARD_SIZE, INFER_DEVICE_ID
 from mcts import MCTS
 from resnet import ResNet
 
@@ -147,12 +147,13 @@ GREEDY_MCTS_PLAYER = AIPlayer(_greedy_mcts_policy)
 
 class NNMCTSAIPlayer(AIPlayer):
     def __init__(self, ckpt_path):
-        ckpt = torch.load(ckpt_path, map_location="cpu")
+        ckpt = torch.load(ckpt_path, map_location=INFER_DEVICE_ID)
         self.network = ResNet()
         self.network.load_state_dict(ckpt)
         self.network.eval()
+        self.network.to(INFER_DEVICE_ID)
 
-        base_policy = mcts_nn_policy_generator(self.network, "cpu")
+        base_policy = mcts_nn_policy_generator(self.network, INFER_DEVICE_ID)
 
         def policy(chessboard):
             t = MCTS(chessboard, 1, 16, base_policy)

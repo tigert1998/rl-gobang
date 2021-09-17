@@ -46,3 +46,7 @@ CKPT_DIR = "ckpts"
 # defines the master behaviour
 SELF_PLAY_DEVICE_IDS = ["cuda:0", "cuda:0", "cuda:0"]
 TRAIN_DEVICE_ID = "cuda:2"
+INFER_DEVICE_ID = "cuda:2"
+
+# adb
+ADB = "adb"

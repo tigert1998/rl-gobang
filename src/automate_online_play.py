@@ -11,6 +11,7 @@ from players import NNMCTSAIPlayer
 from gobang_utils import config_log
 from gobang_vis import chessboard_str
 
+from config import ADB
 
 def get_median_color(img, xy, radius) -> np.array:
     img = img.crop(
@@ -33,7 +34,7 @@ class OnlinePlatform:
             return "-s {}".format(self.adb_device_id)
 
     def _shell(self, cmd):
-        cmd = "adb {} shell {}".format(self._device_str(), cmd)
+        cmd = "{} {} shell {}".format(ADB, self._device_str(), cmd)
         ret = os.system(cmd)
         if ret != 0:
             logging.warning("{} = {}".format(ret, cmd))
@@ -44,7 +45,7 @@ class OnlinePlatform:
             os.makedirs("tmp")
         except FileExistsError:
             ...
-        cmd = "adb {} pull {} tmp".format(self._device_str(), path)
+        cmd = "{} {} pull {} tmp".format(ADB, self._device_str(), path)
         ret = os.system(cmd)
         if ret != 0:
             logging.warning("{} = {}".format(ret, cmd))
@@ -143,7 +144,7 @@ class TencentHappyGomoku(OnlinePlatform):
 if __name__ == "__main__":
     config_log(None)
     platform = TencentHappyGomoku(None)
-    player = NNMCTSAIPlayer("/Users/tigertang/Projects/rl-gobang/41270.pt")
+    player = NNMCTSAIPlayer("/home/fucong/playground/rl-gobang/41270.pt")
 
     while True:
         who, chessboard = platform.wait_on_chessboard()
