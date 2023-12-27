@@ -1,15 +1,20 @@
 import ctypes
+import sys
 
 # defines the game
 
 
 def _read_config_from_capi():
-    lib = ctypes.CDLL('bazel-bin/mcts/libcapi.so')
+    lib = ctypes.CDLL(
+        "bazel-bin/mcts/capi_shared.dll"
+        if sys.platform.startswith("win")
+        else "bazel-bin/mcts/capi_shared.so"
+    )
 
     class Config(ctypes.Structure):
         _fields_ = [
-            ('chessboard_size', ctypes.c_int),
-            ('in_a_row', ctypes.c_int),
+            ("chessboard_size", ctypes.c_int),
+            ("in_a_row", ctypes.c_int),
         ]
 
     lib.global_GetConfig.argtypes = []

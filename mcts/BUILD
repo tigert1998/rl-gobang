@@ -15,3 +15,10 @@ cc_library(
     ],
     alwayslink=True
 )
+
+cc_shared_library(
+    name = "capi_shared",
+    deps = [
+        ":capi",
+    ],
+)

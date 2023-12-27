@@ -11,7 +11,7 @@ def save_history_img(history: List[Tuple[int, int, int]], path: str):
 
     background = Image.open("imgs/chessboard.png").convert("RGB")
     draw = ImageDraw.Draw(background)
-    font = ImageFont.truetype("Arial.ttf", 18)
+    font = ImageFont.load_default()
 
     BLACK = (0, 0, 0)
     WHITE = (255, 255, 255)
@@ -26,24 +26,18 @@ def save_history_img(history: List[Tuple[int, int, int]], path: str):
         img_y = 20 + x * 40
 
         draw.ellipse(
-            (img_x - r, img_y - r, img_x + r, img_y + r),
-            fill=stone_colors[who]
+            (img_x - r, img_y - r, img_x + r, img_y + r), fill=stone_colors[who]
         )
         msg = str(i + 1)
         w, h = draw.textsize(msg, font=font)
-        draw.text(
-            (img_x - w / 2, img_y - h / 2), msg,
-            font=font, fill=text_colors[who]
-        )
+        draw.text((img_x - w / 2, img_y - h / 2), msg, font=font, fill=text_colors[who])
         all_imgs.append(copy.deepcopy(background))
 
     if path.endswith(".jpeg"):
         background.save(path, "jpeg")
     else:
         all_imgs[0].save(
-            path, save_all=True,
-            append_images=all_imgs[1:],
-            duration=1000, loop=0
+            path, save_all=True, append_images=all_imgs[1:], duration=1000, loop=0
         )
 
 
