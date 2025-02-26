@@ -45,32 +45,30 @@ class ResNet(nn.Module):
             nn.BatchNorm2d(2),
             nn.ReLU(),
             Flatten(),
-            nn.Linear(chessboard_size ** 2 * 2, chessboard_size ** 2),
+            nn.Linear(chessboard_size**2 * 2, chessboard_size**2),
         )
         self.value_head = nn.Sequential(
             nn.Conv2d(c, 1, 1),
             nn.BatchNorm2d(1),
             nn.ReLU(),
             Flatten(),
-            nn.Linear(chessboard_size ** 2, hidden_units),
+            nn.Linear(chessboard_size**2, hidden_units),
             nn.ReLU(),
             nn.Linear(hidden_units, 1),
-            nn.Tanh()
+            nn.Tanh(),
         )
 
     def forward(self, x):
         net = self.module_list(x)
-        ret0 = self.policy_head(net)\
-            .view(-1, config.CHESSBOARD_SIZE, config.CHESSBOARD_SIZE)
+        ret0 = self.policy_head(net).view(
+            -1, config.CHESSBOARD_SIZE, config.CHESSBOARD_SIZE
+        )
         ret1 = self.value_head(net)[:, 0]
         return (ret0, ret1)
 
 
 def load_ckpt(path: str, device_id: str) -> ResNet:
-    ckpt = torch.load(
-        path,
-        map_location=device_id
-    )
+    ckpt = torch.load(path, map_location=device_id, weights_only=True)
     network = ResNet()
     network.load_state_dict(ckpt)
     network.to(device_id)

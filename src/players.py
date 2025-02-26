@@ -9,22 +9,18 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from gobang_utils import \
-    stone_is_valid, simple_heuristics, mcts_nn_policy_generator
+from gobang_utils import stone_is_valid, simple_heuristics, mcts_nn_policy_generator
 from config import CHESSBOARD_SIZE, INFER_DEVICE_ID
 from mcts import MCTS
 from resnet import ResNet
 
 
 class Player:
-    def place_stone(self, x, y):
-        ...
+    def place_stone(self, x, y): ...
 
-    def evaluate(self, who, chessboard) -> Tuple[int, int]:
-        ...
+    def evaluate(self, who, chessboard) -> Tuple[int, int]: ...
 
-    def kill(self):
-        ...
+    def kill(self): ...
 
 
 class HumanPlayer(Player):
@@ -43,7 +39,9 @@ class HumanPlayer(Player):
     def evaluate(self, who, chessboard):
         self.cv.acquire()
         self.choice = None
-        while not self.killed and (self.choice is None or not stone_is_valid(chessboard, *self.choice)):
+        while not self.killed and (
+            self.choice is None or not stone_is_valid(chessboard, *self.choice)
+        ):
             self.cv.wait()
         choice = copy(self.choice)
         self.cv.release()
@@ -84,10 +82,10 @@ RANDOM_PLAYER = AIPlayer(_random_policy)
 def _basic_mcts_policy(chessboard):
     def base_policy(chessboard):
         n = chessboard.shape[0]
-        policy = np.ones((n, CHESSBOARD_SIZE, CHESSBOARD_SIZE)) \
-            / CHESSBOARD_SIZE ** 2
+        policy = np.ones((n, CHESSBOARD_SIZE, CHESSBOARD_SIZE)) / CHESSBOARD_SIZE**2
         value = np.zeros((n,))
         return policy, value
+
     t = MCTS(chessboard, 1, 1, base_policy)
     t.search(1600, 3, None)
     pi = t.get_pi(0)
@@ -128,10 +126,10 @@ GREEDY_PLAYER = AIPlayer(_greedy_policy)
 def _greedy_mcts_policy(chessboard):
     def base_policy(chessboard):
         n = chessboard.shape[0]
-        policy = np.ones((n, CHESSBOARD_SIZE, CHESSBOARD_SIZE)) \
-            / CHESSBOARD_SIZE ** 2
+        policy = np.ones((n, CHESSBOARD_SIZE, CHESSBOARD_SIZE)) / CHESSBOARD_SIZE**2
         value = np.array([simple_heuristics(chessboard[i]) for i in range(n)])
         return policy, value
+
     t = MCTS(chessboard, 1, 1, base_policy)
     t.search(800, 3, None)
     pi = t.get_pi(0)
@@ -147,7 +145,7 @@ GREEDY_MCTS_PLAYER = AIPlayer(_greedy_mcts_policy)
 
 class NNMCTSAIPlayer(AIPlayer):
     def __init__(self, ckpt_path):
-        ckpt = torch.load(ckpt_path, map_location=INFER_DEVICE_ID)
+        ckpt = torch.load(ckpt_path, map_location=INFER_DEVICE_ID, weights_only=True)
         self.network = ResNet()
         self.network.load_state_dict(ckpt)
         self.network.eval()
@@ -160,7 +158,9 @@ class NNMCTSAIPlayer(AIPlayer):
             t.search(1600, 3, None)
             pi = t.get_pi(0)
             choices = []
-            for x, y in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)):
+            for x, y in itertools.product(
+                range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE)
+            ):
                 if pi[x, y] > 0:
                     choices.append((x, y))
             return choices[random.randint(0, len(choices) - 1)]

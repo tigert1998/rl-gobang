@@ -29,7 +29,8 @@ def save_history_img(history: List[Tuple[int, int, int]], path: str):
             (img_x - r, img_y - r, img_x + r, img_y + r), fill=stone_colors[who]
         )
         msg = str(i + 1)
-        w, h = draw.textsize(msg, font=font)
+        w = draw.textlength(msg, font=font)
+        h = font.size
         draw.text((img_x - w / 2, img_y - h / 2), msg, font=font, fill=text_colors[who])
         all_imgs.append(copy.deepcopy(background))
 
