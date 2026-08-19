@@ -43,7 +43,7 @@ class MCTS:
             for i in range(n):
                 memmove(
                     probs[i],
-                    x[i].reshape((-1,)).astype(c_double).ctypes.get_data(),
+                    x[i].reshape((-1,)).astype(c_double).ctypes.data,
                     sizeof(c_double) * (CHESSBOARD_SIZE**2),
                 )
                 vs[i][0] = c_double(y[i])

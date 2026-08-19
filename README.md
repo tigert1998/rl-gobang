@@ -3,7 +3,7 @@
 ## Kickstart
 
 ```sh
-bazel build -c opt //mcts:capi
+bazel build -c opt //mcts:capi_shared
 pip install -r requirements.txt
 ```
 

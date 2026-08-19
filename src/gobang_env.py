@@ -101,7 +101,7 @@ if __name__ == "__main__":
     config_log(None)
 
     player = NNMCTSAIPlayer("./41270.pt")
-    arena = VisualArena([player, HUMAN_PLAYER])
+    arena = VisualArena([HUMAN_PLAYER, player])
     arena.event_loop()
 
     save_history_img(arena.history, "play.gif")
