@@ -14,17 +14,14 @@ from gobang_vis import save_history_img
 
 
 class VisualArena:
-    INFO = {
-        0: ("black", (0, 0, 0)),
-        1: ("white", (255, 255, 255))
-    }
+    INFO = {0: ("black", (0, 0, 0)), 1: ("white", (255, 255, 255))}
 
     def __init__(self, players: List[Player]):
         self.players = players
         self.display = pygame.display.set_mode((600, 600))
         self.history = []
-        pygame.display.set_caption('Gobang')
-        background_img = pygame.image.load('imgs/chessboard.png')
+        pygame.display.set_caption("Gobang")
+        background_img = pygame.image.load("imgs/chessboard.png")
         self.display.blit(background_img, (0, 0))
         pygame.display.update()
 
@@ -35,12 +32,13 @@ class VisualArena:
         if chessboard is None:
             chessboard = np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE))
         chessboard = chessboard.astype(np.float32)
-        for x, y, who in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE), range(2)):
+        for x, y, who in itertools.product(
+            range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE), range(2)
+        ):
             if chessboard[who, x, y] > 0:
                 self.place_stone(who, x, y)
         if initial_player is None:
-            who = 1 if (chessboard[0, :, :].sum() >
-                        chessboard[1, :, :].sum()) else 0
+            who = 1 if (chessboard[0, :, :].sum() > chessboard[1, :, :].sum()) else 0
         else:
             who = initial_player
 
@@ -52,7 +50,8 @@ class VisualArena:
                 x, y = choice
                 if not stone_is_valid(chessboard, x, y):
                     msg = "invalid stone placed by {} player at ({}, {})".format(
-                        self.INFO[who][0], x, y)
+                        self.INFO[who][0], x, y
+                    )
                     logging.error(msg)
                     break
                 self.history.append((who, x, y))
@@ -83,16 +82,13 @@ class VisualArena:
                 break
             elif event.type == pygame.MOUSEBUTTONUP:
                 pos = pygame.mouse.get_pos()
-                x, y = np.round((np.array(pos) - 20) / 40)[::-1]\
-                    .astype(np.int32)
+                x, y = np.round((np.array(pos) - 20) / 40)[::-1].astype(np.int32)
                 for i in range(2):
                     self.players[i].place_stone(x, y)
 
     def place_stone(self, who, x, y):
         pygame.draw.circle(
-            self.display,
-            self.INFO[who][1],
-            (20 + y * 40, 20 + x * 40), 16
+            self.display, self.INFO[who][1], (20 + y * 40, 20 + x * 40), 16
         )
         pygame.display.update()
 

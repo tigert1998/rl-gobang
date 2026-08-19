@@ -36,7 +36,9 @@ def get_winner(chessboard):
     assert chessboard.shape == (2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)
 
     for a in [0, 1]:
-        for x, y, d in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE), _DIRS):
+        for x, y, d in itertools.product(
+            range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE), _DIRS
+        ):
             yes = True
             for i in range(IN_A_ROW):
                 nx, ny = np.array([x, y]) + np.array(d) * i
@@ -47,7 +49,7 @@ def get_winner(chessboard):
             if yes:
                 return a
 
-    if chessboard.sum() >= CHESSBOARD_SIZE ** 2:
+    if chessboard.sum() >= CHESSBOARD_SIZE**2:
         return -2
 
     return -1
@@ -60,11 +62,17 @@ def simple_heuristics(chessboard) -> float:
     rank = [0, 0, 1, 1e2, 1e4, 1e6]
 
     for who in [0, 1]:
-        for x, y, d in itertools.product(range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE), _DIRS):
+        for x, y, d in itertools.product(
+            range(CHESSBOARD_SIZE), range(CHESSBOARD_SIZE), _DIRS
+        ):
             break_flag = False
             for i in range(IN_A_ROW):
                 nx, ny = np.array([x, y]) + np.array(d) * i
-                if min(nx, ny) < 0 or max(nx, ny) >= CHESSBOARD_SIZE or not (chessboard[who, nx, ny] > 0):
+                if (
+                    min(nx, ny) < 0
+                    or max(nx, ny) >= CHESSBOARD_SIZE
+                    or not (chessboard[who, nx, ny] > 0)
+                ):
                     break_flag = True
                     break
             if not break_flag:
@@ -91,10 +99,15 @@ def mcts_nn_policy_generator(network, device_id: str):
         i = torch.from_numpy(chessboard.copy()).to(device_id)
         batch_size = i.size(0)
         x, y = network(i)
-        x = F.softmax(x.view((batch_size, -1)), dim=-1).cpu()\
-            .data.numpy().reshape((-1, CHESSBOARD_SIZE, CHESSBOARD_SIZE))
+        x = (
+            F.softmax(x.view((batch_size, -1)), dim=-1)
+            .cpu()
+            .data.numpy()
+            .reshape((-1, CHESSBOARD_SIZE, CHESSBOARD_SIZE))
+        )
         y = y.cpu().data.numpy()
         return x, y
+
     return policy
 
 
@@ -107,6 +120,7 @@ def config_log(filename: Optional[str]):
         handler = logging.FileHandler(filename)
     handler.setLevel(logging.INFO)
     formatter = logging.Formatter(
-        '[%(asctime)s] [%(filename)s:%(lineno)s] [%(levelname)s] %(message)s')
+        "[%(asctime)s] [%(filename)s:%(lineno)s] [%(levelname)s] %(message)s"
+    )
     handler.setFormatter(formatter)
     root.handlers = [handler]

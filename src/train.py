@@ -1,4 +1,5 @@
 import multiprocessing as mp
+from multiprocessing.sharedctypes import Synchronized
 import threading
 import os
 import logging
@@ -10,10 +11,15 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 
-from config import \
-    CKPT_DIR, CHESSBOARD_SIZE, EVAL_FREQ, \
-    EVAL_CPUCT, EVAL_NUM_SIMS, EVAL_MCTS_BATCH, \
-    TRAIN_LR
+from config import (
+    CKPT_DIR,
+    CHESSBOARD_SIZE,
+    EVAL_FREQ,
+    EVAL_CPUCT,
+    EVAL_NUM_SIMS,
+    EVAL_MCTS_BATCH,
+    TRAIN_LR,
+)
 from resnet import load_ckpt
 from mcts import MCTS
 from gobang_utils import config_log, action_from_prob, mcts_nn_policy_generator
@@ -100,19 +106,21 @@ def evaluate_against_best_ckpt(candidate_network, device_id) -> bool:
     best_network.eval()
     candidate_network.eval()
 
-    policies = list(map(
-        lambda network: mcts_nn_policy_generator(network, device_id),
-        [best_network, candidate_network]
-    ))
+    policies = list(
+        map(
+            lambda network: mcts_nn_policy_generator(network, device_id),
+            [best_network, candidate_network],
+        )
+    )
 
     who = 0
-    chessboard = np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE))\
-        .astype(np.float32)
+    chessboard = np.zeros((2, CHESSBOARD_SIZE, CHESSBOARD_SIZE)).astype(np.float32)
     while True:
         t = MCTS(
             chessboard if who == 0 else chessboard[::-1, :, :],
-            1, EVAL_MCTS_BATCH,
-            policies[who]
+            1,
+            EVAL_MCTS_BATCH,
+            policies[who],
         )
         if t.terminated():
             return who == 0
@@ -125,7 +133,9 @@ def evaluate_against_best_ckpt(candidate_network, device_id) -> bool:
     return False
 
 
-def train_main(device_id: str, init_ckpt_idx: int, data_queue: mp.Queue, pid: mp.Value):
+def train_main(
+    device_id: str, init_ckpt_idx: int, data_queue: mp.Queue, pid: Synchronized
+):
     # double fork
     fork_pid = os.fork()
     if fork_pid != 0:
@@ -136,22 +146,16 @@ def train_main(device_id: str, init_ckpt_idx: int, data_queue: mp.Queue, pid: mp
     record_buffer = RecordBuffer()
 
     get_data_loop_thread = threading.Thread(
-        target=get_data_loop,
-        args=(record_buffer, data_queue)
+        target=get_data_loop, args=(record_buffer, data_queue)
     )
     get_data_loop_thread.start()
 
     network = load_ckpt(
-        os.path.join(CKPT_DIR, "{}.pt".format(init_ckpt_idx)),
-        device_id
+        os.path.join(CKPT_DIR, "{}.pt".format(init_ckpt_idx)), device_id
     )
     logging.info("ckpt #{} has been loaded".format(init_ckpt_idx))
 
-    optimizer = torch.optim.SGD(
-        network.parameters(),
-        lr=TRAIN_LR,
-        weight_decay=1e-4
-    )
+    optimizer = torch.optim.SGD(network.parameters(), lr=TRAIN_LR, weight_decay=1e-4)
 
     last_ckpt_idx = 0
     ckpt_idx = init_ckpt_idx
@@ -169,12 +173,13 @@ def train_main(device_id: str, init_ckpt_idx: int, data_queue: mp.Queue, pid: mp
             optimizer.zero_grad()
             out_p, out_v = network(chessboard)
 
-            loss = F.mse_loss(v, out_v) - \
-                torch.mean(torch.sum(
-                    F.log_softmax(out_p.view((-1, CHESSBOARD_SIZE ** 2)), dim=-1) *
-                    p.view((-1, CHESSBOARD_SIZE ** 2)),
-                    dim=1
-                ))
+            loss = F.mse_loss(v, out_v) - torch.mean(
+                torch.sum(
+                    F.log_softmax(out_p.view((-1, CHESSBOARD_SIZE**2)), dim=-1)
+                    * p.view((-1, CHESSBOARD_SIZE**2)),
+                    dim=1,
+                )
+            )
 
             loss.backward()
             optimizer.step()
@@ -183,12 +188,11 @@ def train_main(device_id: str, init_ckpt_idx: int, data_queue: mp.Queue, pid: mp
         logging.info("ckpt #{} has been trained".format(ckpt_idx))
         if ckpt_idx - last_ckpt_idx >= EVAL_FREQ:
             last_ckpt_idx = ckpt_idx
-            logging.info(
-                "evaluating ckpt #{} against best ckpt".format(ckpt_idx))
+            logging.info("evaluating ckpt #{} against best ckpt".format(ckpt_idx))
             if evaluate_against_best_ckpt(network, device_id):
                 torch.save(
                     network.state_dict(),
-                    os.path.join(CKPT_DIR, "{}.pt".format(ckpt_idx))
+                    os.path.join(CKPT_DIR, "{}.pt".format(ckpt_idx)),
                 )
                 update_best_ckpt_idx(ckpt_idx)
             else:

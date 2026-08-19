@@ -2,7 +2,6 @@ import os
 import logging
 import glob
 import multiprocessing as mp
-import subprocess
 import json
 import signal
 import argparse
@@ -37,10 +36,9 @@ def start():
         logging.info("best index not found")
 
         ckpts = glob.glob("{}/*.pt".format(CKPT_DIR))
-        ckpts = list(map(
-            lambda p: int(os.path.splitext(os.path.basename(p))[0]),
-            ckpts
-        ))
+        ckpts = list(
+            map(lambda p: int(os.path.splitext(os.path.basename(p))[0]), ckpts)
+        )
         ckpts.sort()
         if len(ckpts) == 0:
             logging.info("no ckpt available in the ckpt directory")
@@ -59,18 +57,16 @@ def start():
     self_play_procs = []
     data_queue = mp.Queue(1 << 9)
     for device_id in SELF_PLAY_DEVICE_IDS:
-        pids.append(mp.Value('i', 0))
-        self_play_procs.append(mp.Process(
-            target=self_play_main,
-            args=(device_id, data_queue, pids[-1])
-        ))
+        pids.append(mp.Value("i", 0))
+        self_play_procs.append(
+            mp.Process(target=self_play_main, args=(device_id, data_queue, pids[-1]))
+        )
         self_play_procs[-1].start()
         self_play_procs[-1].join()
 
-    pids.append(mp.Value('i', 0))
+    pids.append(mp.Value("i", 0))
     train_proc = mp.Process(
-        target=train_main,
-        args=(TRAIN_DEVICE_ID, best_idx, data_queue, pids[-1])
+        target=train_main, args=(TRAIN_DEVICE_ID, best_idx, data_queue, pids[-1])
     )
     train_proc.start()
     train_proc.join()
@@ -100,10 +96,9 @@ def kill():
 
 if __name__ == "__main__":
     config_log(None)
-    parser = argparse.ArgumentParser(description='master')
+    parser = argparse.ArgumentParser(description="master")
     parser.add_argument(
-        "instruction", help="the instruction to execute",
-        choices=["start", "kill"]
+        "instruction", help="the instruction to execute", choices=["start", "kill"]
     )
     args = parser.parse_args()
     if args.instruction == "start":

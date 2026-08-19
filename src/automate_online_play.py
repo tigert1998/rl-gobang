@@ -13,11 +13,9 @@ from gobang_vis import chessboard_str
 
 from config import ADB
 
+
 def get_median_color(img, xy, radius) -> np.array:
-    img = img.crop(
-        (xy[0] - radius, xy[1] - radius,
-         xy[0] + radius, xy[1] + radius)
-    )
+    img = img.crop((xy[0] - radius, xy[1] - radius, xy[0] + radius, xy[1] + radius))
     arr = np.array(img.getdata())
     color = np.median(arr, axis=0)[:-1]
     return color
@@ -114,10 +112,7 @@ class TencentHappyGomoku(OnlinePlatform):
 
         for i in range(15):
             for j in range(15):
-                c = get_median_color(
-                    img, self._chess_coordiante_at(i, j),
-                    chess_radius
-                )
+                c = get_median_color(img, self._chess_coordiante_at(i, j), chess_radius)
                 avg_c = np.average(c) / 255
 
                 if avg_c < 0.65:

@@ -1,7 +1,7 @@
 from typing import List, Tuple
 import copy
 
-from PIL import Image, ImageFont, ImageDraw, ImageEnhance
+from PIL import Image, ImageFont, ImageDraw
 
 from gobang_utils import CHESSBOARD_SIZE
 

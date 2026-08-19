@@ -3,7 +3,6 @@ import threading
 from copy import copy
 import random
 import itertools
-import logging
 
 import numpy as np
 import torch
